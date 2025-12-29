@@ -25,7 +25,7 @@ app.use('/api', limiter);
 
 // Mount Routes
 app.get('/', (req, res) => res.send('QuizMaster Pro API Running...'));
-// app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/auth', require('./routes/authRoutes'));
 // app.use('/api/quizzes', require('./routes/quizRoutes'));
 // app.use('/api/ai', require('./routes/aiRoutes'));
 
