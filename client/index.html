@@ -38,6 +38,58 @@
 
     <main id="main-content" class="main-content container" tabindex="-1">
 
+        <!-- Auth Pages -->
+        <div id="login" class="page" role="tabpanel">
+            <div class="form-card centered-card" style="max-width: 400px; margin: 4rem auto;">
+                <h2 class="u-center-text u-mb-2">Login</h2>
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="login-email">Email</label>
+                        <input type="email" id="login-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Password</label>
+                        <input type="password" id="login-password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-large u-full-width">Login</button>
+                    <p class="u-mt-2 u-center-text">
+                        Don't have an account? <a href="#" onclick="router.navigate('register')">Sign up</a>
+                    </p>
+                </form>
+            </div>
+        </div>
+
+        <div id="register" class="page" role="tabpanel">
+            <div class="form-card centered-card" style="max-width: 400px; margin: 4rem auto;">
+                <h2 class="u-center-text u-mb-2">Create Account</h2>
+                <form id="register-form">
+                    <div class="form-group">
+                        <label for="reg-username">Username</label>
+                        <input type="text" id="reg-username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-email">Email</label>
+                        <input type="email" id="reg-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-password">Password</label>
+                        <input type="password" id="reg-password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-role">I am a...</label>
+                        <select id="reg-role">
+                            <option value="participant">Participant</option>
+                            <option value="creator">Creator (Teacher)</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-large u-full-width">Sign Up</button>
+                    <p class="u-mt-2 u-center-text">
+                        Already have an account? <a href="#" onclick="router.navigate('login')">Login</a>
+                    </p>
+                </form>
+            </div>
+        </div>
+
         <!-- Dashboard -->
         <div id="dashboard" class="page active" role="tabpanel" aria-labelledby="dashboard-title">
             <h1 id="dashboard-title" class="page-title">Your Dashboard</h1>
@@ -361,6 +413,7 @@
     <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
 
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="script.js"></script>
 </body>
 

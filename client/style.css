@@ -479,6 +479,49 @@ select {
     border-color: #3b82f6;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
     background: #fff;
+    color: #1e293b; /* Ensure text is dark and readable on the white focus background */
+}
+
+[data-theme="dark"] .form-group input:focus,
+[data-theme="dark"] .form-group textarea:focus,
+[data-theme="dark"] .form-group select:focus {
+    background: #1e293b; /* Darker background for focus in dark mode */
+    color: #f1f5f9; /* Ensure white text */
+    border-color: #60a5fa;
+}
+
+/* Explicit Placeholder Styling for Contrast */
+.form-group input::placeholder,
+.form-group textarea::placeholder,
+.form-group select::placeholder {
+    color: #94a3b8; /* Slate-400 */
+    opacity: 1; /* Firefox applies 0.5 by default */
+}
+
+[data-theme="dark"] .form-group input::placeholder,
+[data-theme="dark"] .form-group textarea::placeholder,
+[data-theme="dark"] .form-group select::placeholder {
+    color: #64748b; /* Slate-500, darker than main text */
+}
+
+/* Fix Autocomplete/Autofill Backgrounds */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--text-light);
+    -webkit-box-shadow: 0 0 0px 1000px var(--card-light) inset;
+    transition: background-color 5000s ease-in-out 0s; /* Hack to preserve transparency look */
+}
+
+[data-theme="dark"] input:-webkit-autofill {
+    -webkit-text-fill-color: #f1f5f9;
+    -webkit-box-shadow: 0 0 0px 1000px #1e293b inset; /* Match card background */
 }
 
 .input-code {

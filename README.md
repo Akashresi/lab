@@ -1,89 +1,80 @@
-# QuizMaster Pro
+# QuizMaster Pro - Full Stack Web Application
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
+## 1. Project Overview
+QuizMaster Pro is a production-ready web application for creating and taking quizzes and coding challenges. It features real-time interaction, AI-powered content generation, and full authentication.
 
-QuizMaster Pro is a professional, real-time quiz and coding challenge platform designed for academic and interview preparation scenarios. It features role-based access control, AI-powered question generation, and real-time multiplayer capabilities.
+## 2. Tech Stack
+- **Frontend**: HTML5, Vanilla CSS, JavaScript (ES6+), Socket.IO Client.
+- **Backend**: Node.js, Express.js, Socket.IO.
+- **Database**: PostgreSQL with Sequelize ORM.
+- **Authentication**: JWT (JSON Web Tokens) & Bcrypt.
+- **AI Integration**: Google Gemini API (or Mock fallback).
 
-## 🚀 Features
-
-*   **Real-Time Architecture:** Synchronization via Socket.IO.
-*   **Role-Based Access:** Creators (Teachers/Interviewers) and Participants (Students/Candidates).
-*   **AI Integration:** Generates quizzes and interview questions on demand.
-*   **Secure:** JWT Authentication, Bcrypt hashing, Helmet protection, Zod validation.
-*   **Database:** Robust data modeling with PostgreSQL and Sequelize.
-
-## 🛠 Tech Stack
-
-### Frontend
-*   **Core:** HTML5, CSS3 (Variables, Flexbox/Grid), Vanilla JavaScript (ES6+).
-*   **State:** Custom Router & Store implementation.
-*   **Real-time:** `socket.io-client`.
-
-### Backend
-*   **Runtime:** Node.js.
-*   **Framework:** Express.js.
-*   **Database:** PostgreSQL (with Sequelize ORM).
-*   **Real-time:** Socket.IO.
-*   **Security:** `helmet`, `xss-clean`, `bcryptjs`, `jsonwebtoken`.
-
-## 📦 Installation & Setup
-
-### Prerequisites
-*   Node.js (v18+)
-*   PostgreSQL (Local or Docker)
-
-### 1. Clone & Install
-```bash
-git clone https://github.com/Akashresi/lab.git
-cd lab
-npm install
+## 3. Folder Structure
+```
+/
+├── client/                 # Frontend
+│   ├── index.html         # Main UI (SPA structure)
+│   ├── script.js          # Core Logic (Auth, API, UI)
+│   └── style.css          # Styling
+├── server/                 # Backend
+│   ├── config/            # DB Configuration
+│   ├── controllers/       # Route Logic (Auth, Quiz, Challenge, AI)
+│   ├── middleware/        # Auth Middleware (JWT)
+│   ├── models/            # Sequelize Models (User, Quiz, Question...)
+│   ├── routes/            # API Route Definitions
+│   ├── utils/             # Helpers (Socket.io)
+│   ├── app.js             # Express App Setup
+│   └── server.js          # Server Entry Point
+├── .env                   # Environment Variables
+├── package.json           # Dependencies
+└── README.md              # Documentation
 ```
 
-### 2. Environment Variables
-Create a `.env` file in the root based on `.env.example`:
-```env
-PORT=5000
-POSTGRES_URI=postgres://user:pass@localhost:5432/quizmaster
-JWT_SECRET=your_super_secret_key
-AI_API_KEY=your_openai_key
-```
+## 4. Setup Instructions
+1. **Prerequisites**: Node.js and PostgreSQL installed.
+2. **Database Setup**:
+   - Create a Postgres database named `quizmaster` (or update `.env`).
+   - The app will automatically sync tables on start.
+3. **Environment (.env)**:
+   ```
+   PORT=5000
+   POSTGRES_URI=postgres://user:pass@localhost:5432/quizmaster
+   JWT_SECRET=your_secret_key
+   AI_API_KEY=your_google_api_key (optional)
+   ```
+4. **Install Dependencies**:
+   ```bash
+   npm install
+   ```
+5. **Run Application**:
+   - Backend: `npm run dev` (starts on port 5000)
+   - Frontend: Serve `client/index.html` (e.g., using `live-server` or open file directly if CORS allows, best served via simple HTTP server).
 
-### 3. Database Setup
-Ensure PostgreSQL is running, then the app will auto-sync tables on start.
-```bash
-# Optional: Seed data
-npm run seed
-```
+## 5. API Documentation
 
-### 4. Run the App
-```bash
-# Development (Backend + Watch Mode)
-npm run dev
+### Authentication
+- `POST /api/auth/register`: { username, email, password, role }
+- `POST /api/auth/login`: { email, password }
 
-# Frontend
-# Open client/index.html in Live Server or deploy static host.
-```
+### Quizzes
+- `GET /api/quizzes`: List all quizzes.
+- `POST /api/quizzes`: Create quiz (Creator only).
+- `GET /api/quizzes/:id`: Get quiz details.
+- `DELETE /api/quizzes/:id`: Delete quiz.
 
-## 🏗 Architecture
+### AI Generation
+- `POST /api/ai/generate-quiz`: { topic, difficulty, count }
+- `POST /api/ai/generate-challenge`: { topic, difficulty }
 
-The system follows a **Controller-Service-Repository** pattern (simplified to Controller-Model for this scale).
+## 6. Real-Time Features
+- **Socket.IO** is used for joining quiz rooms (`join_quiz`).
+- Events: `quiz_started`, `participant_joined`.
 
-*   **Models:** define the SQL Schema.
-*   **Controllers:** handle HTTP requests and validation.
-*   **Middleware:** enforces Security and Auth rules.
+## 7. Database Schema
+- **Users**: id, username, email, password, role.
+- **Quizzes**: id, title, start_time, duration, access_code, creator_id.
+- **Questions**: id, quiz_id, text, options (JSON), correct_index.
+- **CodeChallenges**: id, title, description, test_cases, creator_id.
+- **Attempts**: id, user_id, quiz_id/challenge_id, score.
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for deeper details.
-
-## 🧪 Testing
-
-```bash
-# Run Unit Tests (Jest) - Coming Soon
-npm test
-```
-
-## 🐳 Docker Deployment
-
-```bash
-docker-compose up --build -d
-```

@@ -21,18 +21,8 @@ const io = require('socket.io')(server, {
 global.io = io;
 
 // Socket Logic Stub
-io.on('connection', (socket) => {
-    console.log('New client connected:', socket.id);
-
-    socket.on('join_quiz', (quizId) => {
-        socket.join(`quiz_${quizId}`);
-        console.log(`Socket ${socket.id} joined quiz_${quizId}`);
-    });
-
-    socket.on('disconnect', () => {
-        console.log('Client disconnected:', socket.id);
-    });
-});
+// Initialize Socket Logic
+socketUtils(io);
 
 const PORT = process.env.PORT || 5000;
 

@@ -6,7 +6,8 @@ const rateLimit = require('express-rate-limit');
 const { connectDB } = require('./config/db');
 
 // Connect to Database
-// connectDB(); 
+// Connect to Database
+connectDB();
 
 const app = express();
 
@@ -26,8 +27,9 @@ app.use('/api', limiter);
 // Mount Routes
 app.get('/', (req, res) => res.send('QuizMaster Pro API Running...'));
 app.use('/api/auth', require('./routes/authRoutes'));
-// app.use('/api/quizzes', require('./routes/quizRoutes'));
-// app.use('/api/ai', require('./routes/aiRoutes'));
+app.use('/api/quizzes', require('./routes/quizRoutes'));
+app.use('/api/challenges', require('./routes/challengeRoutes'));
+app.use('/api/ai', require('./routes/aiRoutes'));
 
 // Error Handler
 app.use((err, req, res, next) => {

@@ -1,16 +1,60 @@
 /**
- * QuizMaster Pro - Core Application Logic
- * Refactored for modern standards, accessibility, and UX.
+ * QuizMaster Pro - Full Stack Application Logic
  */
 
-/* === State & Storage === */
+const API_URL = 'http://localhost:5000/api';
+let socket;
+
+/* === State & Auth === */
 const Store = {
-    get: (key) => JSON.parse(localStorage.getItem(key)) || [],
-    set: (key, data) => localStorage.setItem(key, JSON.stringify(data)),
-    theme: () => localStorage.getItem('theme') || 'light'
+    theme: () => localStorage.getItem('theme') || 'light',
+
+    // Auth State
+    token: localStorage.getItem('token'),
+    user: JSON.parse(localStorage.getItem('user')),
+
+    setAuth(token, user) {
+        this.token = token;
+        this.user = user;
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+    },
+
+    clearAuth() {
+        this.token = null;
+        this.user = null;
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+    }
 };
 
-/* === UI Components (Modal, Toast, Router) === */
+/* === API Helper === */
+const API = {
+    async request(endpoint, method = 'GET', body = null) {
+        const headers = { 'Content-Type': 'application/json' };
+        if (Store.token) headers['Authorization'] = `Bearer ${Store.token}`;
+
+        try {
+            const config = { method, headers };
+            if (body) config.body = JSON.stringify(body);
+
+            const res = await fetch(`${API_URL}${endpoint}`, config);
+            const data = await res.json();
+
+            if (!res.ok) throw new Error(data.error || 'Something went wrong');
+            return data;
+        } catch (error) {
+            UI.toast.show(error.message, 'error');
+            if (error.message.includes('Not authorized') || error.message.includes('token failed')) {
+                Store.clearAuth();
+                router.navigate('login');
+            }
+            throw error;
+        }
+    }
+};
+
+/* === UI Components === */
 const UI = {
     modal: {
         overlay: document.getElementById('modal-overlay'),
@@ -42,7 +86,6 @@ const UI = {
 
             this.overlay.classList.add('open');
             this.overlay.setAttribute('aria-hidden', 'false');
-            // Trap focus roughly
             closeBtn.focus();
         },
 
@@ -54,19 +97,12 @@ const UI = {
 
     toast: {
         container: document.getElementById('toast-container'),
-
         show(message, type = 'success') {
             const toast = document.createElement('div');
             toast.className = `toast toast-${type}`;
-            toast.innerHTML = `
-                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
-                <span>${message}</span>
-            `;
+            toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> <span>${message}</span>`;
             this.container.appendChild(toast);
-
-            // Animation trigger
             requestAnimationFrame(() => toast.classList.add('show'));
-
             setTimeout(() => {
                 toast.classList.remove('show');
                 setTimeout(() => toast.remove(), 400);
@@ -80,7 +116,6 @@ class Router {
     constructor() {
         this.pages = document.querySelectorAll('.page');
         this.navLinks = document.querySelectorAll('.nav-link');
-        this.currentPage = 'dashboard';
 
         window.addEventListener('popstate', (e) => {
             if (e.state && e.state.page) this.navigate(e.state.page, false);
@@ -88,6 +123,15 @@ class Router {
     }
 
     navigate(pageId, pushState = true) {
+        // Auth Guard
+        const publicPages = ['login', 'register'];
+        if (!publicPages.includes(pageId) && !Store.token) {
+            pageId = 'login';
+        }
+        if (publicPages.includes(pageId) && Store.token) {
+            pageId = 'dashboard';
+        }
+
         if (!document.getElementById(pageId)) return;
 
         this.pages.forEach(p => p.classList.remove('active'));
@@ -97,47 +141,56 @@ class Router {
         const activeLink = document.getElementById(`nav-${pageId}`);
         if (activeLink) activeLink.classList.add('active');
 
-        if (pushState) {
-            history.pushState({ page: pageId }, '', `#${pageId}`);
-        }
+        // Nav visibility control (hide nav on login/register)
+        const nav = document.querySelector('.navbar');
+        if (publicPages.includes(pageId)) nav.style.display = 'none';
+        else nav.style.display = 'flex';
 
-        this.currentPage = pageId;
+        if (pushState) history.pushState({ page: pageId }, '', `#${pageId}`);
+
         window.scrollTo(0, 0);
 
-        // Refresh data based on page
+        // Load Data
         if (pageId === 'dashboard') App.initDashboard();
         if (pageId === 'quizzes') App.initQuizzes();
         if (pageId === 'challenges') App.initChallenges();
     }
 }
-
 const router = new Router();
 
 /* === Core Logic === */
 const App = {
     init() {
-        // Theme Init
+        // Theme
         const theme = Store.theme();
         document.body.setAttribute('data-theme', theme);
         document.getElementById('theme-icon').className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
 
-        // Check hash for initial route
-        const hash = window.location.hash.slice(1) || 'dashboard';
-        // Simple hash check for known routes
-        const validRoutes = ['dashboard', 'quizzes', 'challenges', 'interviews', 'quiz-create', 'challenge-create'];
-        const route = validRoutes.includes(hash) ? hash : 'dashboard';
+        // Connect Socket if authorized
+        if (Store.token) this.connectSocket();
 
-        router.navigate(route, false);
+        // Initial Route
+        const hash = window.location.hash.slice(1) || 'dashboard';
+        router.navigate(hash, false);
 
         this.bindEvents();
-        this.initDashboard();
+    },
+
+    connectSocket() {
+        if (!window.io) return;
+        socket = io('http://localhost:5000');
+        socket.on('connect', () => console.log('Socket Connected'));
     },
 
     bindEvents() {
-        // Forms
-        document.getElementById('quiz-form').addEventListener('submit', (e) => this.handleQuizSubmit(e));
-        document.getElementById('challenge-form').addEventListener('submit', (e) => this.handleChallengeSubmit(e));
-        document.getElementById('interview-form').addEventListener('submit', (e) => this.handleInterviewGenerate(e));
+        // Auth Forms
+        document.getElementById('login-form')?.addEventListener('submit', (e) => this.handleLogin(e));
+        document.getElementById('register-form')?.addEventListener('submit', (e) => this.handleRegister(e));
+
+        // Content Forms
+        document.getElementById('quiz-form')?.addEventListener('submit', (e) => this.handleQuizSubmit(e));
+        document.getElementById('challenge-form')?.addEventListener('submit', (e) => this.handleChallengeSubmit(e));
+        document.getElementById('interview-form')?.addEventListener('submit', (e) => this.handleInterviewGenerate(e));
 
         // Toggles
         document.querySelectorAll('input[name="quiz-mode"]').forEach(r =>
@@ -148,318 +201,296 @@ const App = {
         );
     },
 
-    toggleFormSection(manualId, aiId, mode) {
-        const manual = document.getElementById(manualId);
-        const ai = document.getElementById(aiId);
+    /* === Auth Handlers === */
+    async handleLogin(e) {
+        e.preventDefault();
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
 
-        if (mode === 'manual') {
-            manual.classList.remove('u-hidden');
-            ai.classList.add('u-hidden');
-        } else {
-            manual.classList.add('u-hidden');
-            ai.classList.remove('u-hidden');
+        try {
+            const data = await API.request('/auth/login', 'POST', { email, password });
+            Store.setAuth(data.token, data.user);
+            UI.toast.show(`Welcome back, ${data.user.username}!`);
+            this.connectSocket();
+            router.navigate('dashboard');
+        } catch (err) {
+            // Error handled by API helper
         }
     },
 
-    /* === Data Helpers === */
-    getStatus(item) {
-        const now = new Date();
-        const start = new Date(item.startTime);
-        const end = new Date(start.getTime() + item.duration * 60000);
+    async handleRegister(e) {
+        e.preventDefault();
+        const username = document.getElementById('reg-username').value;
+        const email = document.getElementById('reg-email').value;
+        const password = document.getElementById('reg-password').value;
+        const role = document.getElementById('reg-role').value;
 
-        if (now < start) return 'pending';
-        if (now < end) return 'active';
-        return 'completed';
+        try {
+            const data = await API.request('/auth/register', 'POST', { username, email, password, role });
+            Store.setAuth(data.token, data.user);
+            UI.toast.show('Account created successfully!');
+            this.connectSocket();
+            router.navigate('dashboard');
+        } catch (err) {
+            // Error handled
+        }
+    },
+
+    logout() {
+        Store.clearAuth();
+        if (socket) socket.disconnect();
+        router.navigate('login');
     },
 
     /* === Dashboard & Lists === */
     renderItem(item, type, index, showActions = true) {
-        const status = this.getStatus(item);
+        const start = new Date(item.start_time);
+        const end = new Date(start.getTime() + item.duration_minutes * 60000);
+        const now = new Date();
+
+        let status = 'pending';
+        if (now >= start && now < end) status = 'active';
+        if (now >= end) status = 'completed';
+
         const statusLabels = { pending: 'Upcoming', active: 'Live Now', completed: 'Ended' };
-        const aiBadge = item.aiGenerated ? '<span class="status-badge" style="background:var(--color-accent);color:white;margin-left:0.5rem;"><i class="fas fa-robot"></i> AI</span>' : '';
+        const aiBadge = item.is_ai_generated ? '<span class="status-badge" style="background:var(--color-accent);color:white;margin-left:0.5rem;"><i class="fas fa-robot"></i> AI</span>' : '';
 
         return `
             <div class="item-card status-${status}">
                 <div class="item-info">
-                    <h4>${item.name} ${aiBadge}</h4>
+                    <h4>${item.title} ${aiBadge}</h4>
                     <div class="item-meta">
                         <span class="status-badge status-${status}">${statusLabels[status]}</span>
-                        <span><i class="far fa-calendar"></i> ${new Date(item.startTime).toLocaleString()}</span>
-                        <span><i class="far fa-clock"></i> ${item.duration} min</span>
+                        <span><i class="far fa-calendar"></i> ${start.toLocaleString()}</span>
+                        <span><i class="far fa-clock"></i> ${item.duration_minutes} min</span>
                     </div>
                 </div>
                 ${showActions ? `
                 <div style="display:flex;gap:0.5rem;">
-                    <button class="btn btn-primary btn-sm" onclick="App.startItem('${type}', ${index})">Start</button>
-                    <button class="btn btn-danger btn-sm" onclick="App.deleteItem('${type}', ${index})"><i class="fas fa-trash"></i></button>
+                    <button class="btn btn-primary btn-sm" onclick="App.startItem('${type}', '${item.id}')">Start</button>
+                    ${Store.user.role === 'creator' || Store.user.role === 'admin' ? `
+                    <button class="btn btn-danger btn-sm" onclick="App.deleteItem('${type}', '${item.id}')"><i class="fas fa-trash"></i></button>` : ''}
                 </div>` : ''}
             </div>
         `;
     },
 
-    initDashboard() {
-        const quizzes = Store.get('quizzes');
-        const challenges = Store.get('challenges');
+    async initDashboard() {
+        try {
+            const quizData = await API.request('/quizzes');
+            const challengeData = await API.request('/challenges');
 
-        const renderSection = (id, items, type, icon) => {
-            const container = document.getElementById(id);
-            if (items.length === 0) {
-                container.innerHTML = `<div class="empty-state"><i class="fas ${icon} empty-icon"></i><p>No items yet.</p></div>`;
-                return;
-            }
-            // Group by status
-            const groups = ['active', 'pending', 'completed'];
-            let html = '';
-            groups.forEach(status => {
-                const groupItems = items.filter(i => this.getStatus(i) === status);
-                if (groupItems.length) {
-                    html += `<h4 class="u-mb-1" style="margin-top:1.5rem;text-transform:capitalize;">${status} (${groupItems.length})</h4>`;
-                    html += groupItems.map(i => this.renderItem(i, type, items.indexOf(i), false)).join('');
-                }
-            });
-            container.innerHTML = html || '<p class="u-center-text">No active items.</p>';
-        };
-
-        renderSection('dashboard-quizzes-content', quizzes, 'quiz', 'fa-book-open');
-        renderSection('dashboard-challenges-content', challenges, 'challenge', 'fa-laptop-code');
+            this.renderSection('dashboard-quizzes-content', quizData.data, 'quiz', 'fa-book-open');
+            this.renderSection('dashboard-challenges-content', challengeData.data, 'challenge', 'fa-laptop-code');
+        } catch (err) { console.error(err); }
     },
 
-    initQuizzes() {
-        const quizzes = Store.get('quizzes');
-        const container = document.getElementById('quiz-list');
-        container.innerHTML = quizzes.length === 0
-            ? '<div class="empty-state"><i class="fas fa-list-ul empty-icon"></i><p>No quizzes yet. Create one!</p></div>'
-            : quizzes.map((q, i) => this.renderItem(q, 'quiz', i)).join('');
-    },
-
-    initChallenges() {
-        const challenges = Store.get('challenges');
-        const container = document.getElementById('challenge-list');
-        container.innerHTML = challenges.length === 0
-            ? '<div class="empty-state"><i class="fas fa-terminal empty-icon"></i><p>No challenges yet. Create one!</p></div>'
-            : challenges.map((c, i) => this.renderItem(c, 'challenge', i)).join('');
-    },
-
-    /* === Logic Actions === */
-    startItem(type, index) {
-        const items = Store.get(type + 's');
-        const item = items[index];
-
-        // Use Modal instead of prompt
-        const content = `
-            <p>This ${type} is protected.</p>
-            <div class="form-group">
-                <label>Enter Password</label>
-                <input type="password" id="modal-password-input" class="form-control" placeholder="Password" style="width:100%;padding:0.5rem;border:1px solid #ccc;border-radius:4px;">
-            </div>
-        `;
-
-        UI.modal.show(`Start ${item.name}`, content, () => {
-            const input = document.getElementById('modal-password-input').value;
-            if (input === item.password) {
-                UI.toast.show(`Access Granted! Starting ${item.name}...`);
-                // Simulate navigation or start
-            } else {
-                UI.toast.show('Incorrect Password', 'error');
-            }
-        }, 'Start');
-    },
-
-    deleteItem(type, index) {
-        UI.modal.show('Confirm Deletion', 'Are you sure you want to permanently delete this item?', () => {
-            const items = Store.get(type + 's');
-            items.splice(index, 1);
-            Store.set(type + 's', items);
-
-            UI.toast.show('Item deleted successfully.');
-
-            // Refresh
-            if (type === 'quiz') this.initQuizzes();
-            if (type === 'challenge') this.initChallenges();
-            this.initDashboard();
-        }, 'Delete', 'danger');
-    },
-
-    /* === Generators === */
-    generateQuizQuestions(topic, level, num) {
-        const questions = [];
-        const topics = ['Concepts', 'Best Practices', 'Edge Cases', 'History', 'Syntax'];
-
-        for (let i = 0; i < num; i++) {
-            const sub = topics[i % topics.length];
-            questions.push({
-                text: `What is a key characteristic of ${topic} regarding ${sub}?`,
-                options: [
-                    `It optimizes performance for ${level} use cases.`,
-                    `It is strictly deprecated in modern versions.`,
-                    `The Correct Answer for ${sub}.`,
-                    `It has no effect on runtime.`
-                ],
-                correct: 2 // generic index
-            });
+    renderSection(id, items, type, icon) {
+        const container = document.getElementById(id);
+        if (!items || items.length === 0) {
+            container.innerHTML = `<div class="empty-state"><i class="fas ${icon} empty-icon"></i><p>No items yet.</p></div>`;
+            return;
         }
-        return questions;
+        container.innerHTML = items.map(i => this.renderItem(i, type, 0, false)).join(''); // limit 0 for demo
+    },
+
+    async initQuizzes() {
+        try {
+            const data = await API.request('/quizzes');
+            const container = document.getElementById('quiz-list');
+            container.innerHTML = data.data.length === 0
+                ? '<div class="empty-state"><i class="fas fa-list-ul empty-icon"></i><p>No quizzes yet.</p></div>'
+                : data.data.map((q) => this.renderItem(q, 'quizzes', q.id)).join('');
+        } catch (e) { }
+    },
+
+    async initChallenges() {
+        try {
+            const data = await API.request('/challenges');
+            const container = document.getElementById('challenge-list');
+            container.innerHTML = data.data.length === 0
+                ? '<div class="empty-state"><i class="fas fa-terminal empty-icon"></i><p>No challenges yet.</p></div>'
+                : data.data.map((c) => this.renderItem(c, 'challenges', c.id)).join('');
+        } catch (e) { }
     },
 
     /* === Form Handlers === */
-    handleQuizSubmit(e) {
+    toggleFormSection(manualId, aiId, mode) {
+        const manual = document.getElementById(manualId);
+        const ai = document.getElementById(aiId);
+        if (mode === 'manual') { manual.classList.remove('u-hidden'); ai.classList.add('u-hidden'); }
+        else { manual.classList.add('u-hidden'); ai.classList.remove('u-hidden'); }
+    },
+
+    async handleQuizSubmit(e) {
         e.preventDefault();
         const mode = document.querySelector('input[name="quiz-mode"]:checked').value;
         const name = document.getElementById('quiz-name').value;
+        const password = document.getElementById('quiz-password').value;
+        const duration = document.getElementById('quiz-duration').value;
+        const start = document.getElementById('quiz-start').value;
 
-        // Simulating AI Load
         if (mode === 'ai') {
-            UI.modal.show('Generating Quiz', `
-                <div class="u-center-text">
-                    <p class="u-mb-1">Our AI is crafting questions about <strong>${document.getElementById('quiz-topic').value}</strong>...</p>
-                    <div class="skeleton skeleton-block" style="height:20px;margin-bottom:10px;"></div>
-                    <div class="skeleton skeleton-block" style="height:20px;margin-bottom:10px;"></div>
-                    <div class="skeleton skeleton-block" style="height:20px;"></div>
-                </div>
-            `); // No buttons, just loading state visuals essentially
+            const topic = document.getElementById('quiz-topic').value;
+            const level = document.getElementById('quiz-level').value;
+            const count = document.getElementById('quiz-num').value;
 
-            setTimeout(() => {
+            UI.modal.show('Generative AI', `<p>Generating quiz on <strong>${topic}</strong>...</p>`);
+
+            try {
+                // Generate Questions first
+                const genRes = await API.request('/ai/generate-quiz', 'POST', { topic, difficulty: level, count });
+                const questions = genRes.data;
+
+                // Create Quiz
+                await API.request('/quizzes', 'POST', {
+                    title: name,
+                    access_code: password,
+                    duration_minutes: duration,
+                    start_time: start,
+                    is_ai_generated: true,
+                    topic,
+                    questions
+                });
+
                 UI.modal.hide();
-                this.finalizeQuizCreation(mode);
-            }, 1500);
+                UI.toast.show('AI Quiz Created!');
+                router.navigate('quizzes');
+            } catch (err) { UI.modal.hide(); }
         } else {
-            this.finalizeQuizCreation(mode);
-        }
-    },
-
-    finalizeQuizCreation(mode) {
-        let questions = [];
-        if (mode === 'manual') {
+            // Manual
+            const questions = [];
             document.querySelectorAll('#questions-container > .question-block').forEach(div => {
                 const inputs = div.querySelectorAll('input, select');
                 if (inputs[0].value.trim()) {
                     questions.push({
                         text: inputs[0].value,
                         options: [inputs[1].value, inputs[2].value, inputs[3].value, inputs[4].value],
-                        correct: parseInt(inputs[5].value)
+                        correct_index: parseInt(inputs[5].value)
                     });
                 }
             });
-        } else {
-            questions = this.generateQuizQuestions(
-                document.getElementById('quiz-topic').value || 'General',
-                document.getElementById('quiz-level').value,
-                parseInt(document.getElementById('quiz-num').value) || 10
-            );
+
+            try {
+                await API.request('/quizzes', 'POST', {
+                    title: name,
+                    access_code: password,
+                    duration_minutes: duration,
+                    start_time: start,
+                    is_ai_generated: false,
+                    questions
+                });
+                UI.toast.show('Quiz Created!');
+                router.navigate('quizzes');
+            } catch (err) { }
         }
-
-        const newQuiz = {
-            name: document.getElementById('quiz-name').value,
-            password: document.getElementById('quiz-password').value,
-            duration: parseInt(document.getElementById('quiz-duration').value),
-            startTime: document.getElementById('quiz-start').value,
-            questions,
-            aiGenerated: mode === 'ai'
-        };
-
-        const list = Store.get('quizzes');
-        list.push(newQuiz);
-        Store.set('quizzes', list);
-
-        UI.toast.show('Quiz created successfully!');
-        document.getElementById('quiz-form').reset();
-        document.getElementById('questions-container').innerHTML = '';
-        router.navigate('quizzes');
     },
 
-    handleChallengeSubmit(e) {
-        e.preventDefault();
-        // Similar to Quiz, just simpler for brevity
-        const newChallenge = {
-            name: document.getElementById('challenge-name').value,
-            password: document.getElementById('challenge-password').value,
-            duration: parseInt(document.getElementById('challenge-duration').value),
-            startTime: document.getElementById('challenge-start').value,
-            aiGenerated: document.querySelector('input[name="challenge-mode"]:checked').value === 'ai'
-        };
+    /* === Actions === */
+    startItem(type, id) {
+        UI.modal.show(`Enter Access Code`, `
+            <input type="password" id="access-code" class="form-control" placeholder="Code">
+        `, async () => {
+            const code = document.getElementById('access-code').value;
+            try {
+                const endpoint = type === 'quizzes' ? `/quizzes/${id}` : `/challenges/${id}`;
+                const data = await API.request(endpoint);
+                const item = data.data;
 
-        const list = Store.get('challenges');
-        list.push(newChallenge);
-        Store.set('challenges', list);
+                if (item.access_code && item.access_code !== code) {
+                    throw new Error('Invalid Access Code');
+                }
 
-        UI.toast.show('Challenge created!');
-        e.target.reset();
-        router.navigate('challenges');
+                // Join Socket Room
+                if (socket) socket.emit('join_quiz', { quizId: id, userId: Store.user.id });
+
+                UI.toast.show(`Started ${item.title}`);
+                // In a real app check start time, redirect to attempt page
+            } catch (err) {
+                UI.toast.show(err.message, 'error');
+            }
+        }, 'Start');
     },
 
-    handleInterviewGenerate(e) {
+    async deleteItem(type, id) {
+        if (!confirm('Delete this item?')) return;
+        try {
+            const endpoint = type === 'quizzes' ? `/quizzes/${id}` : `/challenges/${id}`;
+            await API.request(endpoint, 'DELETE');
+            UI.toast.show('Deleted');
+            if (type === 'quizzes') this.initQuizzes();
+            else this.initChallenges();
+        } catch (err) { }
+    },
+
+    // Global helper for manual questions
+    addQuizQuestion() {
+        const container = document.getElementById('questions-container');
+        const div = document.createElement('div');
+        div.className = 'question-block u-mb-1';
+        div.style.background = 'rgba(255,255,255,0.05)';
+        div.style.padding = '1.5rem';
+        div.style.border = '1px solid var(--border-color)';
+
+        div.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                <h5>Question</h5>
+                <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.question-block').remove()">Remove</button>
+            </div>
+            <div class="form-group"><input type="text" placeholder="Question Text" required class="form-control" style="width:100%"></div>
+            <div class="grid-2">
+                <div class="form-group"><input type="text" placeholder="Option A" required></div>
+                <div class="form-group"><input type="text" placeholder="Option B" required></div>
+                <div class="form-group"><input type="text" placeholder="Option C" required></div>
+                <div class="form-group"><input type="text" placeholder="Option D" required></div>
+            </div>
+            <div class="form-group">
+                <select required>
+                    <option value="0">Answer: Option A</option>
+                    <option value="1">Answer: Option B</option>
+                    <option value="2">Answer: Option C</option>
+                    <option value="3">Answer: Option D</option>
+                </select>
+            </div>
+        `;
+        container.appendChild(div);
+    },
+
+    // Interview
+    async handleInterviewGenerate(e) {
         e.preventDefault();
-        const results = document.getElementById('interview-results');
         const topic = document.getElementById('interview-topic').value;
         const level = document.getElementById('interview-level').value;
+        const results = document.getElementById('interview-results');
 
-        // Skeleton State
-        results.innerHTML = `
-            <div class="skeleton skeleton-block u-mb-1" style="height:100px"></div>
-            <div class="skeleton skeleton-block u-mb-1" style="height:100px"></div>
-            <div class="skeleton skeleton-block" style="height:100px"></div>
-        `;
+        results.innerHTML = '<p>Generating...</p>';
 
-        setTimeout(() => {
-            const count = { junior: 3, mid: 5, senior: 7 }[level];
-            let html = '';
-            for (let i = 1; i <= count; i++) {
-                html += `
-                    <div style="background:var(--card-light); padding:1.5rem; margin-bottom:1rem; border-radius:var(--radius-md); border-left:4px solid var(--color-primary);">
-                        <h4 class="u-mb-1">Q${i}: Explain ${topic} concept #${i} for a ${level} role.</h4>
-                        <p class="text-secondary">Expected Answer: The candidate should mention scalability, readability, and specific patterns related to ${topic}.</p>
-                    </div>
-                `;
-            }
-            results.innerHTML = html;
-            UI.toast.show('Questions generated!');
-        }, 1200);
+        try {
+            const res = await API.request('/ai/generate-interview', 'POST', { topic, level });
+            const questions = res.data;
+
+            results.innerHTML = questions.map((q, i) => `
+                <div style="background:var(--card-light); padding:1rem; margin-bottom:1rem; border-left:3px solid var(--color-primary);">
+                    <strong>Q${i + 1}:</strong> ${q}
+                </div>
+            `).join('');
+        } catch (err) {
+            results.innerHTML = '<p class="text-error">Failed to generate.</p>';
+        }
     }
 };
 
-/* === Global Helpers === */
-let quizQuestionCount = 0;
-function addQuizQuestion() {
-    quizQuestionCount++;
-    const container = document.getElementById('questions-container');
-    const div = document.createElement('div');
-    div.className = 'question-block u-mb-1';
-    div.style.background = 'rgba(255,255,255,0.5)';
-    div.style.padding = '1.5rem';
-    div.style.borderRadius = '8px';
-
-    div.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-            <h5>Question ${quizQuestionCount}</h5>
-            <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.question-block').remove()">Remove</button>
-        </div>
-        <div class="form-group"><label>Question Text</label><input type="text" required class="form-control"></div>
-        <div class="grid-2">
-            <div class="form-group"><label>Option A</label><input type="text" required></div>
-            <div class="form-group"><label>Option B</label><input type="text" required></div>
-            <div class="form-group"><label>Option C</label><input type="text" required></div>
-            <div class="form-group"><label>Option D</label><input type="text" required></div>
-        </div>
-        <div class="form-group">
-            <label>Correct Answer</label>
-            <select required>
-                <option value="0">Option A</option>
-                <option value="1">Option B</option>
-                <option value="2">Option C</option>
-                <option value="3">Option D</option>
-            </select>
-        </div>
-    `;
-    container.appendChild(div);
-}
-
-function toggleTheme() {
+/* === Global Exports === */
+window.addQuizQuestion = App.addQuizQuestion;
+window.toggleTheme = () => {
     const isDark = document.body.getAttribute('data-theme') === 'dark';
     const newTheme = isDark ? 'light' : 'dark';
     document.body.setAttribute('data-theme', newTheme);
     document.getElementById('theme-icon').className = newTheme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
     localStorage.setItem('theme', newTheme);
-}
+};
+window.router = router;
+window.App = App;
 
 // Init
 document.addEventListener('DOMContentLoaded', () => App.init());

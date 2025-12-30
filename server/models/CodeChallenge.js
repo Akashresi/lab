@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/db');
 
-const Quiz = sequelize.define('Quiz', {
+const CodeChallenge = sequelize.define('CodeChallenge', {
     id: {
         type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
@@ -10,6 +10,14 @@ const Quiz = sequelize.define('Quiz', {
     title: {
         type: DataTypes.STRING,
         allowNull: false,
+    },
+    description: {
+        type: DataTypes.TEXT,
+        allowNull: false,
+    },
+    section_title: {
+        type: DataTypes.STRING,
+        allowNull: true // e.g. "Problem Statement"
     },
     access_code: {
         type: DataTypes.STRING,
@@ -28,7 +36,11 @@ const Quiz = sequelize.define('Quiz', {
         type: DataTypes.ENUM('scheduled', 'active', 'ended'),
         defaultValue: 'scheduled',
     },
-
+    test_cases: {
+        type: DataTypes.JSONB, // Array of { input, output, hidden }
+        allowNull: false,
+        defaultValue: []
+    },
     is_ai_generated: {
         type: DataTypes.BOOLEAN,
         defaultValue: false,
@@ -36,10 +48,10 @@ const Quiz = sequelize.define('Quiz', {
     topic: {
         type: DataTypes.STRING,
         allowNull: true,
-    },
+    }
 }, {
     timestamps: true,
-    tableName: 'quizzes'
+    tableName: 'code_challenges'
 });
 
-module.exports = Quiz;
+module.exports = CodeChallenge;
