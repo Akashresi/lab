@@ -1,20 +1,30 @@
-const { Sequelize } = require('sequelize');
+// server/config/db.js
 
-const sequelize = new Sequelize(process.env.POSTGRES_URI || 'postgres://postgres:password@localhost:5432/quizmaster', {
-    dialect: 'postgres',
-    logging: false,
-});
+const { Sequelize } = require("sequelize");
 
+// Create Sequelize instance
+const sequelize = new Sequelize(
+    process.env.POSTGRES_URI || "postgres://postgres:Akash@@6655@localhost:5433/quizmaster",
+    {
+        dialect: "postgres",
+        logging: false,
+    }
+);
+
+// Connect DB safely (NO process.exit)
 const connectDB = async () => {
     try {
         await sequelize.authenticate();
-        console.log('PostgreSQL Connected...');
-        // Sync models (in production, use migrations instead)
+        console.log("✅ PostgreSQL Connected");
+
         await sequelize.sync({ alter: true });
-        console.log('Database Synced');
+        console.log("✅ Database Synced");
     } catch (error) {
-        console.error(`Error: ${error.message}`);
-        process.exit(1);
+        console.error("❌ Database Connection Error");
+        console.error(error);
+
+        // ❌ DO NOT EXIT THE PROCESS
+        // Let server keep running so you can see logs and debug
     }
 };
 

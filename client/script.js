@@ -151,9 +151,11 @@ class Router {
         window.scrollTo(0, 0);
 
         // Load Data
+        // Load Data
         if (pageId === 'dashboard') App.initDashboard();
         if (pageId === 'quizzes') App.initQuizzes();
         if (pageId === 'challenges') App.initChallenges();
+        if (pageId === 'results') App.initResults();
     }
 }
 const router = new Router();
@@ -275,6 +277,54 @@ const App = {
         `;
     },
 
+    /* === Results === */
+    async initResults() {
+        try {
+            const data = await API.request('/results');
+            const container = document.getElementById('results-list');
+            container.innerHTML = data.data.length === 0
+                ? '<div class="empty-state"><p>No results yet.</p></div>'
+                : data.data.map(this.renderResultItem).join('');
+        } catch (e) { console.error(e); }
+    },
+
+    renderResultItem(r) {
+        const isPass = r.status === 'Pass';
+        return `
+            <div class="item-card status-${isPass ? 'completed' : 'active'}" style="border-left: 5px solid ${isPass ? 'var(--color-success)' : 'var(--color-error)'}">
+                <div class="item-info">
+                    <h4>${r.type === 'quiz' ? (r.Quiz?.title || 'Unknown Quiz') : (r.CodeChallenge?.title || 'Unknown Challenge')}</h4>
+                    <div class="item-meta">
+                        <span class="status-badge" style="background:${isPass ? 'var(--color-success)' : 'var(--color-error)'}">${r.status}</span>
+                        <span>Score: ${r.score}/${r.total_score} (${Math.round(r.percentage)}%)</span>
+                        <span>Time: ${r.time_taken}s</span>
+                        <span>${new Date(r.createdAt).toLocaleDateString()}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
+    async exportResults() {
+        try {
+            const res = await fetch(`${API_URL}/results/export`, {
+                headers: { 'Authorization': `Bearer ${Store.token}` }
+            });
+            if (!res.ok) throw new Error('Export failed');
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'results.xlsx';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (e) {
+            UI.toast.show('Export failed', 'error');
+        }
+    },
+
     async initDashboard() {
         try {
             const quizData = await API.request('/quizzes');
@@ -386,6 +436,89 @@ const App = {
         }
     },
 
+    async handleChallengeSubmit(e) {
+        e.preventDefault();
+        const mode = document.querySelector('input[name="challenge-mode"]:checked').value;
+        const title = document.getElementById('challenge-name').value;
+        const password = document.getElementById('challenge-password').value;
+        const duration = document.getElementById('challenge-duration').value;
+        const start = document.getElementById('challenge-start').value;
+
+        if (!title || !duration || !start) {
+            UI.toast.show('Please fill in valid basic info', 'error');
+            return;
+        }
+
+        if (mode === 'ai') {
+            const topic = document.getElementById('challenge-desc-ai').value;
+
+            if (!topic) {
+                UI.toast.show('Please enter a topic for AI', 'error');
+                return;
+            }
+
+            UI.modal.show('AI Generation', 'Generating challenge...');
+
+            try {
+                const aiRes = await API.request('/ai/generate-challenge', 'POST', {
+                    topic,
+                    difficulty: 'medium'
+                });
+
+                await API.request('/challenges', 'POST', {
+                    title: aiRes.data.title || title,
+                    description: aiRes.data.description,
+                    test_cases: aiRes.data.test_cases,
+                    duration_minutes: duration,
+                    start_time: start,
+                    access_code: password,
+                    is_ai_generated: true,
+                    topic
+                });
+
+                UI.modal.hide();
+                UI.toast.show('AI Code Challenge Created!');
+                router.navigate('challenges');
+            } catch (err) {
+                UI.modal.hide();
+            }
+        } else {
+            // Manual
+            const description = document.getElementById('challenge-desc-manual').value;
+            const sampleInput = document.getElementById('challenge-input-manual').value;
+            const sampleOutput = document.getElementById('challenge-output-manual').value;
+
+            if (!description) {
+                UI.toast.show('Description required', 'error');
+                return;
+            }
+
+            const test_cases = [];
+            if (sampleInput && sampleOutput) {
+                test_cases.push({
+                    input: sampleInput.trim(),
+                    output: sampleOutput.trim(),
+                    hidden: false
+                });
+            }
+
+            try {
+                await API.request('/challenges', 'POST', {
+                    title,
+                    description,
+                    duration_minutes: duration,
+                    start_time: start,
+                    access_code: password,
+                    test_cases,
+                    is_ai_generated: false
+                });
+
+                UI.toast.show('Code Challenge Created!');
+                router.navigate('challenges');
+            } catch (err) { }
+        }
+    },
+
     /* === Actions === */
     startItem(type, id) {
         UI.modal.show(`Enter Access Code`, `
@@ -404,12 +537,219 @@ const App = {
                 // Join Socket Room
                 if (socket) socket.emit('join_quiz', { quizId: id, userId: Store.user.id });
 
-                UI.toast.show(`Started ${item.title}`);
-                // In a real app check start time, redirect to attempt page
+                // UI.toast.show(`Started ${item.title}`);
+                // Start Attempt Interaction
+                App.loadAttempt(type, id);
             } catch (err) {
                 UI.toast.show(err.message, 'error');
             }
         }, 'Start');
+    },
+
+    /* === Attempt Logic === */
+    activeAttempt: null,
+
+    async loadAttempt(type, id) {
+        try {
+            // Re-fetch item to get details (questions/etc)
+            const endpoint = type === 'quizzes' ? `/quizzes/${id}` : `/challenges/${id}`; // type 'quizzes' from startItem arg, convert to singular? No API uses plural
+            const data = await API.request(endpoint);
+            const item = data.data;
+
+            if (!item) throw new Error('Item not found');
+
+            // Init Attempt State
+            this.activeAttempt = {
+                type: type === 'quizzes' ? 'quiz' : 'challenge',
+                id: item.id,
+                data: item,
+                startTime: Date.now(),
+                duration: item.duration_minutes * 60,
+                timer: null
+            };
+
+            // Render View
+            document.getElementById('attempt-title').textContent = item.title;
+            const container = document.getElementById('attempt-content');
+
+            if (this.activeAttempt.type === 'quiz') {
+                this.renderQuizAttempt(item, container);
+            } else {
+                this.renderChallengeAttempt(item, container);
+            }
+
+            // Switch Page
+            router.navigate('attempt');
+
+            // Start Timer
+            this.startTimer();
+
+        } catch (err) {
+            UI.toast.show(err.message, 'error');
+        }
+    },
+
+    renderQuizAttempt(quiz, container) {
+        container.innerHTML = quiz.Questions.map((q, i) => `
+            <div class="question-block u-mb-2" data-index="${i}">
+                <p><strong>Q${i + 1}:</strong> ${q.text}</p>
+                <div class="options-grid">
+                    ${q.options.map((opt, optIndex) => `
+                        <label class="option-card">
+                            <input type="radio" name="q_${i}" value="${optIndex}">
+                            <span>${opt}</span>
+                        </label>
+                    `).join('')}
+                </div>
+            </div>
+        `).join('');
+    },
+
+    renderChallengeAttempt(challenge, container) {
+        const languages = ['javascript', 'python', 'c', 'cpp', 'java'];
+        const templates = {
+            javascript: `// Read from stdin, print to stdout\nconst fs = require('fs');\nconst input = fs.readFileSync(0, 'utf-8').trim();\n\nfunction solution(data) {\n    console.log(data); // Echo\n}\n\nsolution(input);`,
+            python: `# Read from stdin, print to stdout\nimport sys\n\ndef solution():\n    data = sys.stdin.read().strip()\n    print(data)\n\nsolution()`,
+            c: `#include <stdio.h>\n\nint main() {\n    char buffer[1024];\n    scanf("%s", buffer);\n    printf("%s", buffer);\n    return 0;\n}`,
+            cpp: `#include <iostream>\n#include <string>\nusing namespace std;\n\nint main() {\n    string input;\n    cin >> input;\n    cout << input;\n    return 0;\n}`,
+            java: `import java.util.Scanner;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in);\n        if (scanner.hasNext()) {\n            System.out.println(scanner.next());\n        }\n    }\n}`
+        };
+
+        // Save templates to attempt state for switching
+        this.activeAttempt.templates = templates;
+        this.activeAttempt.language = 'javascript';
+
+        container.innerHTML = `
+            <div class="challenge-desc u-mb-2">
+                <h3>Problem Description</h3>
+                <p>${challenge.description}</p>
+            </div>
+            
+            <div class="code-editor-header u-mb-1" style="display:flex; justify-content:space-between; align-items:center;">
+                <label>Language:</label>
+                <select id="attempt-language" onchange="App.handleLanguageChange(this.value)" class="form-control" style="width:auto; display:inline-block;">
+                    ${languages.map(l => `<option value="${l}">${l.toUpperCase()}</option>`).join('')}
+                </select>
+            </div>
+
+            <div class="code-editor-area">
+                <textarea id="attempt-code" class="input-code" rows="15" spellcheck="false" style="font-family:'JetBrains Mono', monospace;">${templates['javascript']}</textarea>
+            </div>
+
+            <div id="run-output" class="output-console u-mt-2 u-hidden" style="background:#1e1e1e; color:#fff; padding:1rem; border-radius:6px; font-family:'JetBrains Mono', monospace; max-height:200px; overflow-y:auto;">
+                <h5 style="border-bottom:1px solid #333; padding-bottom:0.5rem; margin-bottom:0.5rem;">Console Output</h5>
+                <div id="output-content"></div>
+            </div>
+        `;
+
+        // Inject Run button into footer if not present (hacky but keeps UI constraint)
+        const footer = document.querySelector('#attempt .sticky-footer');
+        if (footer && !document.getElementById('btn-run')) {
+            const runBtn = document.createElement('button');
+            runBtn.id = 'btn-run';
+            runBtn.className = 'btn btn-outline';
+            runBtn.innerHTML = '<i class="fas fa-play"></i> Run Code';
+            runBtn.onclick = () => App.runCode();
+            runBtn.style.marginRight = '0.5rem';
+            footer.insertBefore(runBtn, footer.lastElementChild); // Insert before "Submit"
+        }
+    },
+
+    handleLanguageChange(lang) {
+        this.activeAttempt.language = lang;
+        const code = this.activeAttempt.templates[lang];
+        document.getElementById('attempt-code').value = code;
+    },
+
+    async runCode() {
+        const code = document.getElementById('attempt-code').value;
+        const lang = this.activeAttempt.language;
+        const outputDiv = document.getElementById('run-output');
+        const contentDiv = document.getElementById('output-content');
+
+        outputDiv.classList.remove('u-hidden');
+        contentDiv.innerHTML = '<span style="color:#aaa;">Running...</span>';
+
+        try {
+            const res = await API.request(`/challenges/${this.activeAttempt.id}/run`, 'POST', { code, language: lang });
+            const results = res.data;
+
+            contentDiv.innerHTML = results.map((r, i) => `
+                <div style="margin-bottom:0.8rem; border-left:3px solid ${r.status === 'Accepted' ? '#4caf50' : '#f44336'}; padding-left:0.5rem;">
+                    <div><strong>Test Case ${i + 1}:</strong> <span style="color:${r.status === 'Accepted' ? '#4caf50' : '#f44336'}">${r.status}</span></div>
+                    ${r.status !== 'Accepted' ? `
+                    <div style="font-size:0.9em; opacity:0.8;">Input: ${r.input}</div>
+                    <div style="font-size:0.9em; opacity:0.8;">Expected: ${r.expected}</div>
+                    <div style="font-size:0.9em; opacity:0.8;">Actual: ${r.actual || r.error}</div>
+                    ` : ''}
+                </div>
+            `).join('');
+        } catch (err) {
+            contentDiv.innerHTML = `<span style="color:#f44336;">Execution Failed: ${err.message}</span>`;
+        }
+    },
+
+    startTimer() {
+        const display = document.getElementById('time-remaining');
+        this.activeAttempt.timer = setInterval(() => {
+            const elapsed = Math.floor((Date.now() - this.activeAttempt.startTime) / 1000);
+            const remaining = this.activeAttempt.duration - elapsed;
+
+            if (remaining <= 0) {
+                this.submitAttempt(true);
+            }
+
+            const m = Math.floor(remaining / 60);
+            const s = remaining % 60;
+            display.textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }, 1000);
+    },
+
+    cancelAttempt() {
+        if (!confirm('Abort assessment? Progress will be lost.')) return;
+        clearInterval(this.activeAttempt.timer);
+        this.activeAttempt = null;
+        router.navigate('dashboard');
+    },
+
+    async submitAttempt(auto = false) {
+        if (this.activeAttempt.submitting) return; // prevent double submit
+        this.activeAttempt.submitting = true;
+
+        clearInterval(this.activeAttempt.timer);
+        const timeTaken = Math.floor((Date.now() - this.activeAttempt.startTime) / 1000); // seconds
+
+        let payload = { time_taken: timeTaken };
+        let url = '';
+
+        if (this.activeAttempt.type === 'quiz') {
+            const answers = [];
+            // Gather answers
+            this.activeAttempt.data.Questions.forEach((q, i) => {
+                const selected = document.querySelector(`input[name="q_${i}"]:checked`);
+                answers.push(selected ? parseInt(selected.value) : -1);
+            });
+            payload.answers = answers;
+            url = `/quizzes/${this.activeAttempt.id}/submit`;
+        } else {
+            const code = document.getElementById('attempt-code').value;
+            payload.code = code;
+            payload.language = this.activeAttempt.language; // Send language
+            url = `/challenges/${this.activeAttempt.id}/submit`;
+        }
+
+        if (auto) UI.toast.show('Time up! Submitting...', 'warning');
+        else UI.toast.show('Submitting...', 'info');
+
+        try {
+            await API.request(url, 'POST', payload);
+            UI.toast.show('Submitted successfully!');
+            this.activeAttempt = null;
+            router.navigate('results');
+        } catch (err) {
+            UI.toast.show('Submission failed: ' + err.message, 'error');
+            this.activeAttempt.submitting = false;
+        }
     },
 
     async deleteItem(type, id) {

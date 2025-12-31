@@ -1,14 +1,28 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { protect, authorize } = require('../middleware/authMiddleware');
-const { createQuiz, getQuizzes, getQuiz, deleteQuiz } = require('../controllers/quizController');
+const { protect, authorize } = require("../middleware/authMiddleware");
 
-router.route('/')
+const {
+    createQuiz,
+    getQuizzes,
+    getQuiz,
+    deleteQuiz,
+    submitQuiz,
+} = require("../controllers/quizController");
+
+// Get & create quizzes
+router
+    .route("/")
     .get(protect, getQuizzes)
-    .post(protect, authorize('creator', 'admin'), createQuiz);
+    .post(protect, authorize("creator", "admin"), createQuiz);
 
-router.route('/:id')
+// Get & delete single quiz
+router
+    .route("/:id")
     .get(protect, getQuiz)
-    .delete(protect, authorize('creator', 'admin'), deleteQuiz);
+    .delete(protect, authorize("creator", "admin"), deleteQuiz);
+
+// ✅ FIXED: Submit quiz (PROTECTED)
+router.post("/:id/submit", protect, submitQuiz);
 
 module.exports = router;

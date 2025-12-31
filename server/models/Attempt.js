@@ -22,6 +22,10 @@ const Attempt = sequelize.define('Attempt', {
     is_late: {
         type: DataTypes.BOOLEAN,
         defaultValue: false,
+    },
+    language: {
+        type: DataTypes.STRING,
+        defaultValue: 'javascript'
     }
 }, {
     timestamps: true,

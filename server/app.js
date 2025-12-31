@@ -1,40 +1,91 @@
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const xss = require('xss-clean');
-const rateLimit = require('express-rate-limit');
-const { connectDB } = require('./config/db');
+// server/app.js
 
-// Connect to Database
-// Connect to Database
-connectDB();
+/**
+ * ================================
+ * GLOBAL ERROR HANDLING (TOP)
+ * ================================
+ */
+process.on("unhandledRejection", (err) => {
+    console.error("❌ UNHANDLED PROMISE REJECTION");
+    console.error(err);
+});
+
+process.on("uncaughtException", (err) => {
+    console.error("❌ UNCAUGHT EXCEPTION");
+    console.error(err);
+});
+
+const express = require("express");
+const cors = require("cors");
+const helmet = require("helmet");
+const xss = require("xss-clean");
+const rateLimit = require("express-rate-limit");
+const { connectDB } = require("./config/db");
 
 const app = express();
 
-// Middleware
-app.use(express.json()); // Body parser
-app.use(cors()); // Enable CORS
-app.use(helmet()); // Set security headers
-app.use(xss()); // Prevent XSS attacks
+/**
+ * ================================
+ * MIDDLEWARE
+ * ================================
+ */
+app.use(express.json());
+app.use(cors());
+app.use(helmet());
+app.use(xss());
 
-// Rate Limiting
+/**
+ * ================================
+ * RATE LIMITING
+ * ================================
+ */
 const limiter = rateLimit({
-    windowMs: 10 * 60 * 1000, // 10 mins
-    max: 100 // limit each IP to 100 requests per windowMs
+    windowMs: 10 * 60 * 1000,
+    max: 100,
 });
-app.use('/api', limiter);
+app.use("/api", limiter);
 
-// Mount Routes
-app.get('/', (req, res) => res.send('QuizMaster Pro API Running...'));
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/quizzes', require('./routes/quizRoutes'));
-app.use('/api/challenges', require('./routes/challengeRoutes'));
-app.use('/api/ai', require('./routes/aiRoutes'));
+/**
+ * ================================
+ * ROUTES
+ * ================================
+ */
+app.get("/", (req, res) => {
+    res.send("QuizMaster Pro API Running...");
+});
 
-// Error Handler
+app.use("/api/auth", require("./routes/authRoutes"));
+app.use("/api/quizzes", require("./routes/quizRoutes"));
+app.use("/api/challenges", require("./routes/challengeRoutes"));
+app.use("/api/ai", require("./routes/aiRoutes"));
+app.use("/api/results", require("./routes/resultRoutes"));
+
+/**
+ * ================================
+ * ERROR HANDLER
+ * ================================
+ */
 app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({ success: false, error: 'Server Error' });
+    console.error("❌ EXPRESS ERROR:", err);
+    res.status(500).json({
+        success: false,
+        error: "Internal Server Error",
+    });
 });
+
+/**
+ * ================================
+ * DATABASE CONNECTION (SAFE)
+ * ================================
+ */
+(async () => {
+    try {
+        await connectDB();
+        console.log("✅ Database connected successfully");
+    } catch (err) {
+        console.error("❌ Database connection failed");
+        console.error(err);
+    }
+})();
 
 module.exports = app;

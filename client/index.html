@@ -29,6 +29,9 @@
                     Challenges</button>
                 <button onclick="router.navigate('interviews')" class="nav-link" id="nav-interviews">Interview
                     Qs</button>
+                <button onclick="router.navigate('results')" class="nav-link" id="nav-results">Results</button>
+                <button onclick="App.logout()" class="nav-link" id="nav-logout" style="color:var(--color-error);"><i
+                        class="fas fa-sign-out-alt"></i> Logout</button>
             </div>
             <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">
                 <i class="fas fa-moon" id="theme-icon" aria-hidden="true"></i>
@@ -390,6 +393,40 @@
                         Enter a topic and level, then click Generate to practice!
                     </p>
                 </div>
+            </div>
+        </div>
+
+        <!-- Results Page -->
+        <div id="results" class="page" role="tabpanel" aria-labelledby="results-title">
+            <div class="page-header">
+                <h1 id="results-title" class="page-title">My Results</h1>
+                <button class="btn btn-primary" onclick="App.exportResults()">
+                    <i class="fas fa-file-export"></i> Export to Excel
+                </button>
+            </div>
+            <div class="section-card">
+                <div id="results-list" class="items-container">
+                    <!-- Dynamic Content -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Attempt Page (Quiz/Challenge Taking) -->
+        <div id="attempt" class="page" role="tabpanel">
+            <div class="page-header">
+                <h1 id="attempt-title" class="page-title">Assessment</h1>
+                <div class="timer-badge" id="timer-display">
+                    <i class="fas fa-stopwatch"></i> <span id="time-remaining">00:00</span>
+                </div>
+            </div>
+
+            <div id="attempt-content" class="form-card attempt-container">
+                <!-- Questions or Code Editor injected here -->
+            </div>
+
+            <div class="form-actions sticky-footer">
+                <button class="btn btn-danger" onclick="App.cancelAttempt()">Cancel</button>
+                <button class="btn btn-primary btn-large" onclick="App.submitAttempt()">Submit Assessment</button>
             </div>
         </div>
 

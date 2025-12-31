@@ -12,7 +12,7 @@ const User = sequelize.define('User', {
         allowNull: false,
         unique: true,
         validate: {
-            len: [3, 30],
+            len: [2, 30],
             isAlphanumeric: true
         }
     },

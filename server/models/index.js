@@ -3,6 +3,8 @@ const Quiz = require('./Quiz');
 const Question = require('./Question');
 const CodeChallenge = require('./CodeChallenge');
 const Attempt = require('./Attempt');
+const Result = require('./Result');
+const TimeLog = require('./TimeLog');
 
 // Associations
 
@@ -27,4 +29,18 @@ Attempt.belongsTo(Quiz, { foreignKey: 'quiz_id' });
 CodeChallenge.hasMany(Attempt, { foreignKey: 'challenge_id' });
 Attempt.belongsTo(CodeChallenge, { foreignKey: 'challenge_id' });
 
-module.exports = { User, Quiz, Question, CodeChallenge, Attempt };
+// Results
+User.hasMany(Result, { foreignKey: 'user_id' });
+Result.belongsTo(User, { foreignKey: 'user_id' });
+
+Quiz.hasMany(Result, { foreignKey: 'quiz_id' });
+Result.belongsTo(Quiz, { foreignKey: 'quiz_id' });
+
+CodeChallenge.hasMany(Result, { foreignKey: 'challenge_id' });
+Result.belongsTo(CodeChallenge, { foreignKey: 'challenge_id' });
+
+// TimeLogs
+User.hasMany(TimeLog, { foreignKey: 'user_id' });
+TimeLog.belongsTo(User, { foreignKey: 'user_id' });
+
+module.exports = { User, Quiz, Question, CodeChallenge, Attempt, Result, TimeLog };
