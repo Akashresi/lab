@@ -120,6 +120,9 @@ export default function Layout({ children }) {
                                 <Link to="/quizzes/create" className="btn btn-primary text-sm flex items-center gap-1">
                                     <Plus className="h-4 w-4" /> New Quiz
                                 </Link>
+                                <Link to="/challenges/create" className="btn btn-outline text-sm flex items-center gap-1">
+                                    <Plus className="h-4 w-4" /> New Challenge
+                                </Link>
                             </div>
                         )}
 
