@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="QuizMaster Pro - A platform for creating and taking quizzes and coding challenges.">
+    <title>QuizMaster Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+</head>
+
+<body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <nav class="navbar" role="navigation" aria-label="Main Navigation">
+        <div class="container nav-content">
+            <div class="logo">
+                <i class="fas fa-brain" aria-hidden="true"></i> QuizMaster Pro
+            </div>
+            <div class="nav-links">
+                <button onclick="router.navigate('dashboard')" class="nav-link active" aria-current="page"
+                    id="nav-dashboard">Dashboard</button>
+                <button onclick="router.navigate('quizzes')" class="nav-link" id="nav-quizzes">Quizzes</button>
+                <button onclick="router.navigate('challenges')" class="nav-link" id="nav-challenges">Code
+                    Challenges</button>
+                <button onclick="router.navigate('interviews')" class="nav-link" id="nav-interviews">Interview
+                    Qs</button>
+                <button onclick="router.navigate('results')" class="nav-link" id="nav-results">Results</button>
+                <button onclick="App.logout()" class="nav-link" id="nav-logout" style="color:var(--color-error);"><i
+                        class="fas fa-sign-out-alt"></i> Logout</button>
+            </div>
+            <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">
+                <i class="fas fa-moon" id="theme-icon" aria-hidden="true"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main id="main-content" class="main-content container" tabindex="-1">
+
+        <!-- Auth Pages -->
+        <div id="login" class="page" role="tabpanel">
+            <div class="form-card centered-card" style="max-width: 400px; margin: 4rem auto;">
+                <h2 class="u-center-text u-mb-2">Login</h2>
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="login-email">Email</label>
+                        <input type="email" id="login-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Password</label>
+                        <input type="password" id="login-password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-large u-full-width">Login</button>
+                    <p class="u-mt-2 u-center-text">
+                        Don't have an account? <a href="#" onclick="router.navigate('register')">Sign up</a>
+                    </p>
+                </form>
+            </div>
+        </div>
+
+        <div id="register" class="page" role="tabpanel">
+            <div class="form-card centered-card" style="max-width: 400px; margin: 4rem auto;">
+                <h2 class="u-center-text u-mb-2">Create Account</h2>
+                <form id="register-form">
+                    <div class="form-group">
+                        <label for="reg-username">Username</label>
+                        <input type="text" id="reg-username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-email">Email</label>
+                        <input type="email" id="reg-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-password">Password</label>
+                        <input type="password" id="reg-password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-role">I am a...</label>
+                        <select id="reg-role">
+                            <option value="participant">Participant</option>
+                            <option value="creator">Creator (Teacher)</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-large u-full-width">Sign Up</button>
+                    <p class="u-mt-2 u-center-text">
+                        Already have an account? <a href="#" onclick="router.navigate('login')">Login</a>
+                    </p>
+                </form>
+            </div>
+        </div>
+
+        <!-- Dashboard -->
+        <div id="dashboard" class="page active" role="tabpanel" aria-labelledby="dashboard-title">
+            <h1 id="dashboard-title" class="page-title">Your Dashboard</h1>
+
+            <section class="section-card">
+                <div class="section-header">
+                    <i class="fas fa-question-circle" aria-hidden="true"></i>
+                    <h2 class="section-title">Quizzes</h2>
+                </div>
+                <div id="dashboard-quizzes-content" class="items-container">
+                    <!-- Dynamic Content -->
+                </div>
+            </section>
+
+            <section class="section-card">
+                <div class="section-header">
+                    <i class="fas fa-code" aria-hidden="true"></i>
+                    <h2 class="section-title">Code Challenges</h2>
+                </div>
+                <div id="dashboard-challenges-content" class="items-container">
+                    <!-- Dynamic Content -->
+                </div>
+            </section>
+        </div>
+
+        <!-- Quizzes List -->
+        <div id="quizzes" class="page" role="tabpanel" aria-labelledby="quizzes-title">
+            <div class="page-header">
+                <h1 id="quizzes-title" class="page-title">My Quizzes</h1>
+                <button id="btn-create-quiz" class="btn btn-primary btn-large" onclick="router.navigate('quiz-create')">
+                    <i class="fas fa-plus" aria-hidden="true"></i> Create New Quiz
+                </button>
+            </div>
+            <div class="section-card">
+                <div id="quiz-list" class="items-container">
+                    <!-- Dynamic Content -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ... -->
+
+        <!-- Code Challenges List -->
+        <div id="challenges" class="page" role="tabpanel" aria-labelledby="challenges-title">
+            <div class="page-header">
+                <h1 id="challenges-title" class="page-title">My Code Challenges</h1>
+                <button id="btn-create-challenge" class="btn btn-primary btn-large"
+                    onclick="router.navigate('challenge-create')">
+                    <i class="fas fa-plus" aria-hidden="true"></i> Create New Challenge
+                </button>
+            </div>
+            <div class="section-card">
+                <div id="challenge-list" class="items-container">
+                    <!-- Dynamic Content -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ... -->
+
+        <!-- Interview Questions -->
+        <div id="interviews" class="page" role="tabpanel" aria-labelledby="interviews-title">
+            <div id="interview-generator">
+                <h1 id="interviews-title" class="page-title u-center-text">AI Interview Questions</h1>
+                <div class="form-card centered-card">
+                    <form id="interview-form">
+                        <fieldset class="form-section">
+                            <legend>Generator Settings</legend>
+                            <div class="form-group">
+                                <label for="interview-topic">Topic</label>
+                                <input type="text" id="interview-topic" required
+                                    placeholder="e.g., React, System Design, Python" aria-describedby="int-topic-help">
+                                <small id="int-topic-help" class="help-text">What specific technology or concept should
+                                    we
+                                    focus on?</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="interview-level">Experience Level</label>
+                                <select id="interview-level" required>
+                                    <option value="junior">Junior (Entry Level)</option>
+                                    <option value="mid">Mid-Level</option>
+                                    <option value="senior">Senior (Architect)</option>
+                                </select>
+                            </div>
+                        </fieldset>
+
+                        <button type="submit" class="btn btn-primary btn-large" style="width:100%; margin-top:1rem;">
+                            <i class="fas fa-magic"></i> Generate Questions
+                        </button>
+                    </form>
+
+                    <div id="interview-results" class="results-container u-mt-3" aria-live="polite">
+                        <p class="u-center-text" style="color:var(--text-secondary-light); padding:2rem;">
+                            Enter a topic and level, then click Generate to practice!
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="interview-list-section" class="section-card u-mt-3">
+                <div class="section-header">
+                    <h4>Available Interviews</h4>
+                </div>
+                <div id="interview-list" class="items-container"></div>
+            </div>
+        </div>
+
+        <!-- Results Page -->
+        <div id="results" class="page" role="tabpanel" aria-labelledby="results-title">
+            <div class="page-header">
+                <h1 id="results-title" class="page-title">My Results</h1>
+                <button class="btn btn-primary" onclick="App.exportResults()">
+                    <i class="fas fa-file-export"></i> Export to Excel
+                </button>
+            </div>
+            <div class="section-card">
+                <div id="results-list" class="items-container">
+                    <!-- Dynamic Content -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Attempt Page (Quiz/Challenge Taking) -->
+        <div id="attempt" class="page" role="tabpanel">
+            <div class="page-header">
+                <h1 id="attempt-title" class="page-title">Assessment</h1>
+                <div class="timer-badge" id="timer-display">
+                    <i class="fas fa-stopwatch"></i> <span id="time-remaining">00:00</span>
+                </div>
+            </div>
+
+            <div id="attempt-content" class="form-card attempt-container">
+                <!-- Questions or Code Editor injected here -->
+            </div>
+
+            <div class="form-actions sticky-footer">
+                <button class="btn btn-danger" onclick="App.cancelAttempt()">Cancel</button>
+                <button class="btn btn-primary btn-large" onclick="App.submitAttempt()">Submit Assessment</button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal Container -->
+    <div id="modal-overlay" class="modal-overlay" aria-hidden="true">
+        <div class="modal-content" role="dialog" aria-modal="true">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-title">Title</h3>
+            </div>
+            <div class="modal-body" id="modal-body">
+                Content
+            </div>
+            <div class="modal-actions" id="modal-actions">
+                <!-- Dynamic Buttons -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
