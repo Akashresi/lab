@@ -201,8 +201,6 @@ export default function CreateQuiz() {
                 </div>
             ) : (
                 <>
-
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="card space-y-4">
                             <h2 className="font-semibold text-lg border-b pb-2 mb-4">Basic Info</h2>
