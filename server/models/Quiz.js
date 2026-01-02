@@ -28,6 +28,10 @@ const Quiz = sequelize.define('Quiz', {
         type: DataTypes.ENUM('scheduled', 'active', 'ended'),
         defaultValue: 'scheduled',
     },
+    type: {
+        type: DataTypes.ENUM('quiz', 'interview'),
+        defaultValue: 'quiz',
+    },
 
     is_ai_generated: {
         type: DataTypes.BOOLEAN,

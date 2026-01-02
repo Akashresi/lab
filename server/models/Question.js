@@ -23,6 +23,18 @@ const Question = sequelize.define('Question', {
     points: {
         type: DataTypes.INTEGER,
         defaultValue: 1,
+    },
+    type: {
+        type: DataTypes.ENUM('mcq', 'interactive'),
+        defaultValue: 'mcq'
+    },
+    explanation: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    semantic_answer: {
+        type: DataTypes.TEXT,
+        allowNull: true
     }
 }, {
     timestamps: true,

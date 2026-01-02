@@ -1,4 +1,5 @@
 const { Quiz, Question, User, Result, Attempt, TimeLog } = require("../models");
+const { callAI } = require('../utils/aiHelper');
 
 /**
  * ============================
@@ -16,6 +17,7 @@ exports.createQuiz = async (req, res) => {
             questions,
             topic,
             is_ai_generated,
+            type,
         } = req.body;
 
         const quiz = await Quiz.create({
@@ -26,6 +28,7 @@ exports.createQuiz = async (req, res) => {
             access_code,
             topic,
             is_ai_generated,
+            type: type || 'quiz',
             creator_id: req.user.id,
         });
 
@@ -55,7 +58,12 @@ exports.createQuiz = async (req, res) => {
  */
 exports.getQuizzes = async (req, res) => {
     try {
+        const { type } = req.query;
+        const whereClause = {};
+        if (type) whereClause.type = type;
+
         const quizzes = await Quiz.findAll({
+            where: whereClause,
             include: [
                 { model: User, attributes: ["username"] },
                 { model: Question, attributes: ["id"] },
@@ -165,22 +173,61 @@ exports.submitQuiz = async (req, res) => {
 
         const totalQuestions = quiz.Questions.length;
         let correctCount = 0;
-        const detailedResults = [];
 
-        quiz.Questions.forEach((question, index) => {
-            const userAnsIndex = answers[index];
-            const isCorrect =
-                userAnsIndex === question.correct_index;
+        // Grading Logic
+        const gradingPromises = quiz.Questions.map(async (question, i) => {
+            const userAns = answers[i];
+            let isCorrect = false;
+            let explanation = question.explanation || ''; // Stored explanation
 
-            if (isCorrect) correctCount++;
+            if (question.type === 'interactive') {
+                if (userAns && typeof userAns === 'string' && userAns.trim().length > 0) {
+                    // AI Grading
+                    const prompt = `
+                     Context: "Quiz Answer Evaluation"
+                     Question: "${question.text}"
+                     Expected Answer Concept: "${question.semantic_answer}"
+                     User Answer: "${userAns}"
+                     
+                     Task: Determine if the user's answer roughly matches the expected meaning.
+                     Return ONLY JSON:
+                     { "correct": true, "explanation": "Why..." }
+                     `;
 
-            detailedResults.push({
+                    let graded = false;
+                    try {
+                        const aiRes = await callAI(prompt);
+                        if (aiRes) {
+                            const p = JSON.parse(aiRes.replace(/```json|```/g, '').trim());
+                            isCorrect = p.correct;
+                            if (p.explanation) explanation = p.explanation;
+                            graded = true;
+                        }
+                    } catch (e) { }
+
+                    // Fallback
+                    if (!graded) {
+                        const target = (question.semantic_answer || '').toLowerCase();
+                        isCorrect = userAns.toLowerCase().includes(target);
+                    }
+                }
+            } else {
+                // MCQ Grading
+                // Handle legacy or potential string input for index
+                isCorrect = parseInt(userAns) === question.correct_index;
+            }
+
+            return {
                 questionId: question.id,
-                userAnswer: userAnsIndex,
+                userAnswer: userAns,
                 correctAnswer: question.correct_index,
                 isCorrect,
-            });
+                explanation
+            };
         });
+
+        const detailedResults = await Promise.all(gradingPromises);
+        correctCount = detailedResults.filter(r => r.isCorrect).length;
 
         const percentage =
             totalQuestions > 0
@@ -222,10 +269,24 @@ exports.submitQuiz = async (req, res) => {
             ended_at: new Date(),
         });
 
-        res.status(200).json({
-            success: true,
-            data: result,
-        });
+        if (quiz.type === 'quiz') {
+            // Quizzes: Hide details from participants
+            res.status(200).json({
+                success: true,
+                message: "Assessment Submitted Successfully",
+                data: {
+                    id: result.id,
+                    status: result.status,
+                    // Minimal info
+                }
+            });
+        } else {
+            // Interview / Interactive: Show feedback
+            res.status(200).json({
+                success: true,
+                data: result,
+            });
+        }
     } catch (error) {
         console.error("❌ Submit Quiz Error:", error);
         res.status(500).json({ success: false, error: "Server Error" });

@@ -11,6 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
 </head>
 
 <body>
@@ -122,7 +123,7 @@
         <div id="quizzes" class="page" role="tabpanel" aria-labelledby="quizzes-title">
             <div class="page-header">
                 <h1 id="quizzes-title" class="page-title">My Quizzes</h1>
-                <button class="btn btn-primary btn-large" onclick="router.navigate('quiz-create')">
+                <button id="btn-create-quiz" class="btn btn-primary btn-large" onclick="router.navigate('quiz-create')">
                     <i class="fas fa-plus" aria-hidden="true"></i> Create New Quiz
                 </button>
             </div>
@@ -133,124 +134,14 @@
             </div>
         </div>
 
-        <!-- Quiz Creation -->
-        <div id="quiz-create" class="page" role="tabpanel" aria-labelledby="create-quiz-title">
-            <div class="page-header">
-                <button class="btn-back" onclick="router.navigate('quizzes')" aria-label="Back to quizzes">
-                    <i class="fas fa-arrow-left" aria-hidden="true"></i>
-                </button>
-                <h1 id="create-quiz-title" class="page-title">Create New Quiz</h1>
-            </div>
-            <div class="form-card">
-                <form id="quiz-form">
-
-                    <fieldset class="form-section">
-                        <legend>Basic Information</legend>
-                        <div class="form-group">
-                            <label for="quiz-name">Quiz Name</label>
-                            <input type="text" id="quiz-name" required aria-describedby="quiz-name-help">
-                            <small id="quiz-name-help" class="help-text">Give your quiz a descriptive name users will
-                                recognize.</small>
-                        </div>
-                        <div class="form-group grid-2">
-                            <div>
-                                <label for="quiz-password">Access Password</label>
-                                <input type="password" id="quiz-password" required aria-describedby="quiz-pass-help">
-                                <small id="quiz-pass-help" class="help-text">Share this with participants.</small>
-                            </div>
-                            <div>
-                                <label for="quiz-duration">Duration (minutes)</label>
-                                <input type="number" id="quiz-duration" min="1" required
-                                    aria-describedby="quiz-time-help">
-                                <small id="quiz-time-help" class="help-text">Time allowed to complete the quiz.</small>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="quiz-start">Scheduled Start Time</label>
-                            <input type="datetime-local" id="quiz-start" required>
-                        </div>
-                    </fieldset>
-
-                    <!-- Creation Mode -->
-                    <fieldset class="form-section mode-section">
-                        <legend>Content Creation Mode</legend>
-                        <div class="form-group u-center-text">
-                            <span id="creation-mode-label" class="sr-only">Creation Mode</span>
-                            <div class="toggle-container" role="radiogroup" aria-labelledby="creation-mode-label">
-                                <div class="segmented-control">
-                                    <input type="radio" id="quiz-manual" name="quiz-mode" value="manual" checked>
-                                    <label for="quiz-manual">
-                                        <i class="fas fa-edit"></i> Manual Entry
-                                    </label>
-                                    <input type="radio" id="quiz-ai" name="quiz-mode" value="ai">
-                                    <label for="quiz-ai">
-                                        <i class="fas fa-robot"></i> AI Generate
-                                    </label>
-                                </div>
-                            </div>
-                            <p class="mode-description">
-                                <small><i class="fas fa-info-circle"></i> Choose <strong>Manual</strong> to write
-                                    meaningful questions yourself, or <strong>AI Generate</strong> to auto-create
-                                    questions from a topic.</small>
-                            </p>
-                        </div>
-                    </fieldset>
-
-                    <div id="quiz-manual-form" class="content-section">
-                        <div class="form-group">
-                            <h3 class="u-mb-1" style="color: var(--color-primary);">Quiz Questions</h3>
-                            <p class="help-text u-mb-2">Add multiple choice questions below.</p>
-
-                            <div id="questions-container" aria-live="polite"></div>
-
-                            <div class="add-question-wrapper u-center-text u-mt-3">
-                                <button type="button" class="btn btn-primary" onclick="addQuizQuestion()">
-                                    <i class="fas fa-plus" aria-hidden="true"></i> Add Question
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="quiz-ai-form" class="content-section u-hidden">
-                        <div class="ai-params-box">
-                            <div class="form-group">
-                                <label for="quiz-topic">Topic / Subject</label>
-                                <input type="text" id="quiz-topic"
-                                    placeholder="e.g. JavaScript, World History, Quantum Physics">
-                                <small class="help-text">The AI will generate questions based on this exact
-                                    topic.</small>
-                            </div>
-                            <div class="form-group grid-2">
-                                <div>
-                                    <label for="quiz-level">Difficulty Level</label>
-                                    <select id="quiz-level">
-                                        <option value="easy">Easy (Beginner)</option>
-                                        <option value="medium">Medium (Intermediate)</option>
-                                        <option value="hard">Hard (Advanced)</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label for="quiz-num">Number of Questions</label>
-                                    <input type="number" id="quiz-num" min="1" max="20" value="10">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-outline"
-                            onclick="router.navigate('quizzes')">Cancel</button>
-                        <button type="submit" class="btn btn-primary btn-large">Create Quiz</button>
-                    </div>
-                </form>
-            </div>
-        </div>
+        <!-- ... -->
 
         <!-- Code Challenges List -->
         <div id="challenges" class="page" role="tabpanel" aria-labelledby="challenges-title">
             <div class="page-header">
                 <h1 id="challenges-title" class="page-title">My Code Challenges</h1>
-                <button class="btn btn-primary btn-large" onclick="router.navigate('challenge-create')">
+                <button id="btn-create-challenge" class="btn btn-primary btn-large"
+                    onclick="router.navigate('challenge-create')">
                     <i class="fas fa-plus" aria-hidden="true"></i> Create New Challenge
                 </button>
             </div>
@@ -261,138 +152,52 @@
             </div>
         </div>
 
-        <!-- Challenge Creation -->
-        <div id="challenge-create" class="page" role="tabpanel" aria-labelledby="create-challenge-title">
-            <div class="page-header">
-                <button class="btn-back" onclick="router.navigate('challenges')" aria-label="Back to challenges">
-                    <i class="fas fa-arrow-left" aria-hidden="true"></i>
-                </button>
-                <h1 id="create-challenge-title" class="page-title">Create New Code Challenge</h1>
-            </div>
-            <div class="form-card">
-                <form id="challenge-form">
-
-                    <fieldset class="form-section">
-                        <legend>Basic Information</legend>
-                        <div class="form-group">
-                            <label for="challenge-name">Challenge Name</label>
-                            <input type="text" id="challenge-name" required aria-describedby="chal-name-help">
-                            <small id="chal-name-help" class="help-text">E.g., "Fibonacci Sequence", "Array
-                                Sorting".</small>
-                        </div>
-                        <div class="form-group grid-2">
-                            <div>
-                                <label for="challenge-password">Password</label>
-                                <input type="password" id="challenge-password" required>
-                            </div>
-                            <div>
-                                <label for="challenge-duration">Duration (minutes)</label>
-                                <input type="number" id="challenge-duration" min="1" required>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="challenge-start">Scheduled Start Time</label>
-                            <input type="datetime-local" id="challenge-start" required>
-                        </div>
-                    </fieldset>
-
-                    <fieldset class="form-section mode-section">
-                        <legend>Content Creation Mode</legend>
-                        <div class="form-group u-center-text">
-                            <span id="challenge-mode-label" class="sr-only">Creation Mode</span>
-                            <div class="toggle-container" role="radiogroup" aria-labelledby="challenge-mode-label">
-                                <div class="segmented-control">
-                                    <input type="radio" id="challenge-manual" name="challenge-mode" value="manual"
-                                        checked>
-                                    <label for="challenge-manual"><i class="fas fa-edit"></i> Manual</label>
-                                    <input type="radio" id="challenge-ai" name="challenge-mode" value="ai">
-                                    <label for="challenge-ai"><i class="fas fa-robot"></i> AI Generate</label>
-                                </div>
-                            </div>
-                            <p class="mode-description">
-                                <small>Define the problem yourself or let AI generate a coding problem based on a topic
-                                    description.</small>
-                            </p>
-                        </div>
-                    </fieldset>
-
-                    <div id="challenge-manual-form" class="content-section">
-                        <div class="form-group">
-                            <label for="challenge-desc-manual">Problem Description</label>
-                            <textarea id="challenge-desc-manual" rows="6" required
-                                aria-describedby="desc-help"></textarea>
-                            <small id="desc-help" class="help-text">Describe the problem clearly. Use markdown if
-                                needed.</small>
-                        </div>
-                        <div class="form-group grid-2">
-                            <div>
-                                <label for="challenge-input-manual">Sample Input</label>
-                                <textarea id="challenge-input-manual" rows="4" class="input-code"
-                                    placeholder="e.g. 5&#10;1 2 3 4 5"></textarea>
-                            </div>
-                            <div>
-                                <label for="challenge-output-manual">Sample Output</label>
-                                <textarea id="challenge-output-manual" rows="4" class="input-code"
-                                    placeholder="e.g. 15"></textarea>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="challenge-ai-form" class="content-section u-hidden">
-                        <div class="ai-params-box">
-                            <div class="form-group">
-                                <label for="challenge-desc-ai">Topic / Prompt for AI</label>
-                                <textarea id="challenge-desc-ai" rows="6"
-                                    placeholder="Describe the type of algorithm or data structure problem you want..."></textarea>
-                                <small class="help-text">The AI will generate a formal problem description and test
-                                    cases based on this prompt.</small>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-outline"
-                            onclick="router.navigate('challenges')">Cancel</button>
-                        <button type="submit" class="btn btn-primary btn-large">Create Challenge</button>
-                    </div>
-                </form>
-            </div>
-        </div>
+        <!-- ... -->
 
         <!-- Interview Questions -->
         <div id="interviews" class="page" role="tabpanel" aria-labelledby="interviews-title">
-            <h1 id="interviews-title" class="page-title u-center-text">AI Interview Questions</h1>
-            <div class="form-card centered-card">
-                <form id="interview-form">
-                    <fieldset class="form-section">
-                        <legend>Generator Settings</legend>
-                        <div class="form-group">
-                            <label for="interview-topic">Topic</label>
-                            <input type="text" id="interview-topic" required
-                                placeholder="e.g., React, System Design, Python" aria-describedby="int-topic-help">
-                            <small id="int-topic-help" class="help-text">What specific technology or concept should we
-                                focus on?</small>
-                        </div>
-                        <div class="form-group">
-                            <label for="interview-level">Experience Level</label>
-                            <select id="interview-level" required>
-                                <option value="junior">Junior (Entry Level)</option>
-                                <option value="mid">Mid-Level</option>
-                                <option value="senior">Senior (Architect)</option>
-                            </select>
-                        </div>
-                    </fieldset>
+            <div id="interview-generator">
+                <h1 id="interviews-title" class="page-title u-center-text">AI Interview Questions</h1>
+                <div class="form-card centered-card">
+                    <form id="interview-form">
+                        <fieldset class="form-section">
+                            <legend>Generator Settings</legend>
+                            <div class="form-group">
+                                <label for="interview-topic">Topic</label>
+                                <input type="text" id="interview-topic" required
+                                    placeholder="e.g., React, System Design, Python" aria-describedby="int-topic-help">
+                                <small id="int-topic-help" class="help-text">What specific technology or concept should
+                                    we
+                                    focus on?</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="interview-level">Experience Level</label>
+                                <select id="interview-level" required>
+                                    <option value="junior">Junior (Entry Level)</option>
+                                    <option value="mid">Mid-Level</option>
+                                    <option value="senior">Senior (Architect)</option>
+                                </select>
+                            </div>
+                        </fieldset>
 
-                    <button type="submit" class="btn btn-primary btn-large" style="width:100%; margin-top:1rem;">
-                        <i class="fas fa-magic"></i> Generate Questions
-                    </button>
-                </form>
+                        <button type="submit" class="btn btn-primary btn-large" style="width:100%; margin-top:1rem;">
+                            <i class="fas fa-magic"></i> Generate Questions
+                        </button>
+                    </form>
 
-                <div id="interview-results" class="results-container u-mt-3" aria-live="polite">
-                    <p class="u-center-text" style="color:var(--text-secondary-light); padding:2rem;">
-                        Enter a topic and level, then click Generate to practice!
-                    </p>
+                    <div id="interview-results" class="results-container u-mt-3" aria-live="polite">
+                        <p class="u-center-text" style="color:var(--text-secondary-light); padding:2rem;">
+                            Enter a topic and level, then click Generate to practice!
+                        </p>
+                    </div>
                 </div>
+            </div>
+
+            <div id="interview-list-section" class="section-card u-mt-3">
+                <div class="section-header">
+                    <h4>Available Interviews</h4>
+                </div>
+                <div id="interview-list" class="items-container"></div>
             </div>
         </div>
 

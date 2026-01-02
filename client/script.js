@@ -155,6 +155,7 @@ class Router {
         if (pageId === 'dashboard') App.initDashboard();
         if (pageId === 'quizzes') App.initQuizzes();
         if (pageId === 'challenges') App.initChallenges();
+        if (pageId === 'interviews') App.initInterviews();
         if (pageId === 'results') App.initResults();
     }
 }
@@ -345,6 +346,9 @@ const App = {
     },
 
     async initQuizzes() {
+        if (document.getElementById('btn-create-quiz')) {
+            document.getElementById('btn-create-quiz').style.display = Store.user.role === 'creator' ? 'inline-flex' : 'none';
+        }
         try {
             const data = await API.request('/quizzes');
             const container = document.getElementById('quiz-list');
@@ -355,6 +359,9 @@ const App = {
     },
 
     async initChallenges() {
+        if (document.getElementById('btn-create-challenge')) {
+            document.getElementById('btn-create-challenge').style.display = Store.user.role === 'creator' ? 'inline-flex' : 'none';
+        }
         try {
             const data = await API.request('/challenges');
             const container = document.getElementById('challenge-list');
@@ -411,12 +418,28 @@ const App = {
             // Manual
             const questions = [];
             document.querySelectorAll('#questions-container > .question-block').forEach(div => {
-                const inputs = div.querySelectorAll('input, select');
-                if (inputs[0].value.trim()) {
+                const typeSelect = div.querySelector('select'); // First select is Type
+                const type = typeSelect ? typeSelect.value : 'mcq';
+                const text = div.querySelector('.q-text').value;
+
+                if (type === 'interactive') {
                     questions.push({
-                        text: inputs[0].value,
-                        options: [inputs[1].value, inputs[2].value, inputs[3].value, inputs[4].value],
-                        correct_index: parseInt(inputs[5].value)
+                        type: 'interactive',
+                        text,
+                        options: [],
+                        correct_index: -1,
+                        semantic_answer: div.querySelector('.q-semantic').value,
+                        explanation: div.querySelector('.q-explanation').value
+                    });
+                } else {
+                    const opts = Array.from(div.querySelectorAll('.q-opt')).map(i => i.value);
+                    const correctIdx = div.querySelector('.q-correct').value;
+                    questions.push({
+                        type: 'mcq',
+                        text,
+                        options: opts,
+                        correct_index: parseInt(correctIdx),
+                        explanation: ''
                     });
                 }
             });
@@ -433,6 +456,62 @@ const App = {
                 UI.toast.show('Quiz Created!');
                 router.navigate('quizzes');
             } catch (err) { }
+        }
+    },
+
+    addQuizQuestion() {
+        const container = document.getElementById('questions-container');
+        const count = container.children.length;
+        const html = `
+            <div class="card u-mb-1 question-block" style="padding:1rem; border:1px solid #e2e8f0;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+                    <h6>Question ${count + 1}</h6>
+                    <select class="form-control" style="width:auto; padding:2px; font-size:0.9em;" onchange="App.toggleQuestionType(this)">
+                        <option value="mcq">MCQ</option>
+                        <option value="interactive">Interactive</option>
+                    </select>
+                </div>
+                <input type="text" class="form-control u-mb-1 q-text" placeholder="Question Text" required>
+                
+                <div class="q-options-group">
+                    <div class="grid-2 u-mb-1">
+                        <input type="text" class="form-control q-opt" placeholder="Option A" required>
+                        <input type="text" class="form-control q-opt" placeholder="Option B" required>
+                        <input type="text" class="form-control q-opt" placeholder="Option C" required>
+                        <input type="text" class="form-control q-opt" placeholder="Option D" required>
+                    </div>
+                    <select class="form-control u-mb-1 q-correct">
+                        <option value="0">Correct: Option A</option>
+                        <option value="1">Correct: Option B</option>
+                        <option value="2">Correct: Option C</option>
+                        <option value="3">Correct: Option D</option>
+                    </select>
+                </div>
+                
+                <div class="q-interactive-group u-hidden">
+                    <textarea class="form-control u-mb-1 q-semantic" placeholder="Target Concept / Answer Key" rows="2"></textarea>
+                    <textarea class="form-control u-mb-1 q-explanation" placeholder="Explanation" rows="2"></textarea>
+                </div>
+
+                <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">Remove</button>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', html);
+    },
+
+    toggleQuestionType(select) {
+        const block = select.closest('.question-block');
+        const optGroup = block.querySelector('.q-options-group');
+        const intGroup = block.querySelector('.q-interactive-group');
+
+        if (select.value === 'interactive') {
+            optGroup.classList.add('u-hidden');
+            intGroup.classList.remove('u-hidden');
+            optGroup.querySelectorAll('input').forEach(i => i.removeAttribute('required'));
+        } else {
+            optGroup.classList.remove('u-hidden');
+            intGroup.classList.add('u-hidden');
+            optGroup.querySelectorAll('input').forEach(i => i.setAttribute('required', 'true'));
         }
     },
 
@@ -521,29 +600,41 @@ const App = {
 
     /* === Actions === */
     startItem(type, id) {
+        // Participants skip access code for quizzes
+        if (Store.user.role === 'participant' && type === 'quizzes') {
+            this._startItemAction(type, id);
+            return;
+        }
+
         UI.modal.show(`Enter Access Code`, `
             <input type="password" id="access-code" class="form-control" placeholder="Code">
         `, async () => {
             const code = document.getElementById('access-code').value;
-            try {
-                const endpoint = type === 'quizzes' ? `/quizzes/${id}` : `/challenges/${id}`;
-                const data = await API.request(endpoint);
-                const item = data.data;
-
-                if (item.access_code && item.access_code !== code) {
-                    throw new Error('Invalid Access Code');
-                }
-
-                // Join Socket Room
-                if (socket) socket.emit('join_quiz', { quizId: id, userId: Store.user.id });
-
-                // UI.toast.show(`Started ${item.title}`);
-                // Start Attempt Interaction
-                App.loadAttempt(type, id);
-            } catch (err) {
-                UI.toast.show(err.message, 'error');
-            }
+            this._startItemAction(type, id, code);
         }, 'Start');
+    },
+
+    async _startItemAction(type, id, code = null) {
+        try {
+            const endpoint = type === 'quizzes' ? `/quizzes/${id}` : `/challenges/${id}`;
+            const data = await API.request(endpoint);
+            const item = data.data;
+
+            // Validate Access Code if Creator or Challenge (if challenges need code)
+            // For now, if code provided, check it. If not provided (participant quiz), skip.
+            if (code && item.access_code && item.access_code !== code) {
+                // Check if user is creator? No, simple check
+                throw new Error('Invalid Access Code');
+            }
+
+            // Join Socket Room
+            if (socket) socket.emit('join_quiz', { quizId: id, userId: Store.user.id });
+
+            // Start Attempt Interaction
+            App.loadAttempt(type, id);
+        } catch (err) {
+            UI.toast.show(err.message, 'error');
+        }
     },
 
     /* === Attempt Logic === */
@@ -590,19 +681,28 @@ const App = {
     },
 
     renderQuizAttempt(quiz, container) {
-        container.innerHTML = quiz.Questions.map((q, i) => `
+        container.innerHTML = quiz.Questions.map((q, i) => {
+            if (q.type === 'interactive') {
+                return `
+                <div class="question-block u-mb-2" data-index="${i}">
+                    <p><strong>Q${i + 1}:</strong> ${q.text} <span style="background:#e0f2fe;color:#0369a1;font-size:0.8em;padding:2px 6px;border-radius:4px;">Interactive</span></p>
+                    <textarea id="q_${i}_input" class="form-control" rows="3" placeholder="Type your answer here..." style="width:100%; margin-top:0.5rem;"></textarea>
+                </div>`;
+            }
+
+            return `
             <div class="question-block u-mb-2" data-index="${i}">
                 <p><strong>Q${i + 1}:</strong> ${q.text}</p>
-                <div class="options-grid">
+                <div class="options-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
                     ${q.options.map((opt, optIndex) => `
-                        <label class="option-card">
+                        <label class="option-card" style="display:flex; align-items:center; gap:0.5rem; padding:1rem; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer;">
                             <input type="radio" name="q_${i}" value="${optIndex}">
                             <span>${opt}</span>
                         </label>
                     `).join('')}
                 </div>
-            </div>
-        `).join('');
+            </div>`;
+        }).join('');
     },
 
     renderChallengeAttempt(challenge, container) {
@@ -632,9 +732,7 @@ const App = {
                 </select>
             </div>
 
-            <div class="code-editor-area">
-                <textarea id="attempt-code" class="input-code" rows="15" spellcheck="false" style="font-family:'JetBrains Mono', monospace;">${templates['javascript']}</textarea>
-            </div>
+            <div id="monaco-editor" class="code-editor-area" style="height:400px; border:1px solid var(--border-color); border-radius:4px; overflow:hidden;"></div>
 
             <div id="run-output" class="output-console u-mt-2 u-hidden" style="background:#1e1e1e; color:#fff; padding:1rem; border-radius:6px; font-family:'JetBrains Mono', monospace; max-height:200px; overflow-y:auto;">
                 <h5 style="border-bottom:1px solid #333; padding-bottom:0.5rem; margin-bottom:0.5rem;">Console Output</h5>
@@ -642,7 +740,7 @@ const App = {
             </div>
         `;
 
-        // Inject Run button into footer if not present (hacky but keeps UI constraint)
+        // Inject Run button into footer if not present
         const footer = document.querySelector('#attempt .sticky-footer');
         if (footer && !document.getElementById('btn-run')) {
             const runBtn = document.createElement('button');
@@ -651,18 +749,39 @@ const App = {
             runBtn.innerHTML = '<i class="fas fa-play"></i> Run Code';
             runBtn.onclick = () => App.runCode();
             runBtn.style.marginRight = '0.5rem';
-            footer.insertBefore(runBtn, footer.lastElementChild); // Insert before "Submit"
+            footer.insertBefore(runBtn, footer.lastElementChild);
+        }
+
+        // Initialize Monaco
+        if (window.require) {
+            require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
+            require(['vs/editor/editor.main'], () => {
+                const isDark = document.body.getAttribute('data-theme') === 'dark';
+                App.activeAttempt.editor = monaco.editor.create(document.getElementById('monaco-editor'), {
+                    value: templates['javascript'],
+                    language: 'javascript',
+                    theme: isDark ? 'vs-dark' : 'vs',
+                    automaticLayout: true,
+                    minimap: { enabled: false },
+                    fontSize: 14,
+                    scrollBeyondLastLine: false
+                });
+            });
         }
     },
 
     handleLanguageChange(lang) {
         this.activeAttempt.language = lang;
         const code = this.activeAttempt.templates[lang];
-        document.getElementById('attempt-code').value = code;
+        if (this.activeAttempt.editor) {
+            const model = this.activeAttempt.editor.getModel();
+            monaco.editor.setModelLanguage(model, lang === 'c' || lang === 'cpp' ? 'cpp' : lang);
+            this.activeAttempt.editor.setValue(code);
+        }
     },
 
     async runCode() {
-        const code = document.getElementById('attempt-code').value;
+        const code = this.activeAttempt.editor ? this.activeAttempt.editor.getValue() : '';
         const lang = this.activeAttempt.language;
         const outputDiv = document.getElementById('run-output');
         const contentDiv = document.getElementById('output-content');
@@ -726,13 +845,18 @@ const App = {
             const answers = [];
             // Gather answers
             this.activeAttempt.data.Questions.forEach((q, i) => {
-                const selected = document.querySelector(`input[name="q_${i}"]:checked`);
-                answers.push(selected ? parseInt(selected.value) : -1);
+                if (q.type === 'interactive') {
+                    const textVal = document.getElementById(`q_${i}_input`)?.value || '';
+                    answers.push(textVal);
+                } else {
+                    const selected = document.querySelector(`input[name="q_${i}"]:checked`);
+                    answers.push(selected ? parseInt(selected.value) : -1);
+                }
             });
             payload.answers = answers;
             url = `/quizzes/${this.activeAttempt.id}/submit`;
         } else {
-            const code = document.getElementById('attempt-code').value;
+            const code = this.activeAttempt.editor ? this.activeAttempt.editor.getValue() : '';
             payload.code = code;
             payload.language = this.activeAttempt.language; // Send language
             url = `/challenges/${this.activeAttempt.id}/submit`;
@@ -763,39 +887,9 @@ const App = {
         } catch (err) { }
     },
 
-    // Global helper for manual questions
-    addQuizQuestion() {
-        const container = document.getElementById('questions-container');
-        const div = document.createElement('div');
-        div.className = 'question-block u-mb-1';
-        div.style.background = 'rgba(255,255,255,0.05)';
-        div.style.padding = '1.5rem';
-        div.style.border = '1px solid var(--border-color)';
 
-        div.innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-                <h5>Question</h5>
-                <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.question-block').remove()">Remove</button>
-            </div>
-            <div class="form-group"><input type="text" placeholder="Question Text" required class="form-control" style="width:100%"></div>
-            <div class="grid-2">
-                <div class="form-group"><input type="text" placeholder="Option A" required></div>
-                <div class="form-group"><input type="text" placeholder="Option B" required></div>
-                <div class="form-group"><input type="text" placeholder="Option C" required></div>
-                <div class="form-group"><input type="text" placeholder="Option D" required></div>
-            </div>
-            <div class="form-group">
-                <select required>
-                    <option value="0">Answer: Option A</option>
-                    <option value="1">Answer: Option B</option>
-                    <option value="2">Answer: Option C</option>
-                    <option value="3">Answer: Option D</option>
-                </select>
-            </div>
-        `;
-        container.appendChild(div);
-    },
 
+    // Interview
     // Interview
     async handleInterviewGenerate(e) {
         e.preventDefault();
@@ -803,20 +897,67 @@ const App = {
         const level = document.getElementById('interview-level').value;
         const results = document.getElementById('interview-results');
 
-        results.innerHTML = '<p>Generating...</p>';
+        results.innerHTML = '<p>Generating interview session...</p>';
 
         try {
+            // Generate
             const res = await API.request('/ai/generate-interview', 'POST', { topic, level });
             const questions = res.data;
 
-            results.innerHTML = questions.map((q, i) => `
-                <div style="background:var(--card-light); padding:1rem; margin-bottom:1rem; border-left:3px solid var(--color-primary);">
-                    <strong>Q${i + 1}:</strong> ${q}
-                </div>
-            `).join('');
+            // Create Quiz (Interview Type)
+            const title = `${topic} Interview (${level})`;
+            const quizData = {
+                title,
+                duration_minutes: 30, // Default 30 mins
+                start_time: new Date().toISOString(),
+                is_ai_generated: true,
+                topic,
+                questions,
+                type: 'interview'
+            };
+
+            await API.request('/quizzes', 'POST', quizData);
+
+            results.innerHTML = '<p class="text-success">Interview Generated! Redirecting...</p>';
+            setTimeout(() => {
+                router.navigate('interviews');
+                App.initInterviews(); // Refresh
+            }, 1000);
+
         } catch (err) {
             results.innerHTML = '<p class="text-error">Failed to generate.</p>';
         }
+    },
+
+    async initInterviews() {
+        if (document.getElementById('interview-generator')) {
+            document.getElementById('interview-generator').style.display = Store.user.role === 'creator' ? 'block' : 'none';
+        }
+        try {
+            const data = await API.request('/quizzes?type=interview');
+            // Check if container exists, if not create list
+            // The interviews page has a form-card for generation. I should append the list below it or replace content if user is participant.
+            // Actually, for "Participant", they should see a list of interviews assigned to them or public ones?
+            // "Participants can only attempt content".
+            // So if I am a creator, I see "Generate Interview".
+            // If I am a participant, I see "My Interviews" (which creators made).
+
+            // Let's inject a list container if it doesn't exist
+            let listContainer = document.getElementById('interview-list');
+            if (!listContainer) {
+                const page = document.getElementById('interviews');
+                const listDiv = document.createElement('div');
+                listDiv.id = 'interview-list';
+                listDiv.className = 'items-container u-mt-3';
+                page.appendChild(listDiv);
+                listContainer = listDiv;
+            }
+
+            listContainer.innerHTML = data.data.length === 0
+                ? '<div class="empty-state"><p>No interviews available.</p></div>'
+                : data.data.map((q) => this.renderItem(q, 'quizzes', q.id)).join(''); // Reuse renderItem but type=quizzes (since model is Quiz)
+
+        } catch (e) { }
     }
 };
 
