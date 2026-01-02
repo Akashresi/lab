@@ -58,6 +58,7 @@ app.use("/api", limiter);
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/quizzes", require("./routes/quizRoutes"));
 app.use("/api/challenges", require("./routes/challengeRoutes"));
+app.use("/api/interviews", require("./routes/interviewRoutes"));
 app.use("/api/ai", require("./routes/aiRoutes"));
 app.use("/api/results", require("./routes/resultRoutes"));
 

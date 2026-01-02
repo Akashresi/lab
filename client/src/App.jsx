@@ -5,6 +5,9 @@ import Dashboard from './pages/Dashboard';
 import CreateQuiz from './pages/CreateQuiz';
 import Quizzes from './pages/Quizzes';
 import QuizDetail from './pages/QuizDetail';
+import Challenges from './pages/Challenges';
+import CreateChallenge from './pages/CreateChallenge';
+import Interviews from './pages/Interviews';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -30,6 +33,7 @@ export default function App() {
         </ProtectedRoute>
       } />
 
+      {/* Quiz Routes */}
       <Route path="/quizzes" element={
         <ProtectedRoute>
           <Layout>
@@ -54,9 +58,31 @@ export default function App() {
         </ProtectedRoute>
       } />
 
-      {/* Placeholders for routes in Navbar but not yet implemented */}
-      <Route path="/challenges" element={<ProtectedRoute><Layout><div className="p-8">Coming Soon</div></Layout></ProtectedRoute>} />
-      <Route path="/interviews" element={<ProtectedRoute><Layout><div className="p-8">Coming Soon</div></Layout></ProtectedRoute>} />
+      {/* Challenge Routes */}
+      <Route path="/challenges" element={
+        <ProtectedRoute>
+          <Layout>
+            <Challenges />
+          </Layout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/challenges/create" element={
+        <ProtectedRoute>
+          <Layout>
+            <CreateChallenge />
+          </Layout>
+        </ProtectedRoute>
+      } />
+
+      {/* Interview Routes */}
+      <Route path="/interviews" element={
+        <ProtectedRoute>
+          <Layout>
+            <Interviews />
+          </Layout>
+        </ProtectedRoute>
+      } />
 
       <Route path="*" element={<Navigate to="/dashboard" />} />
     </Routes>

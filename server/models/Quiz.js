@@ -11,38 +11,34 @@ const Quiz = sequelize.define('Quiz', {
         type: DataTypes.STRING,
         allowNull: false,
     },
+    topic: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    difficulty: {
+        type: DataTypes.STRING, // 'easy', 'medium', 'hard'
+        defaultValue: 'medium'
+    },
     access_code: {
         type: DataTypes.STRING,
         allowNull: true,
     },
     start_time: {
-        type: DataTypes.DATE,
+        type: DataTypes.DATE, // Mapped from TIMESTAMP
         allowNull: false,
     },
     duration_minutes: {
         type: DataTypes.INTEGER,
         allowNull: false,
-        validate: { min: 1 }
     },
-    status: {
-        type: DataTypes.ENUM('scheduled', 'active', 'ended'),
-        defaultValue: 'scheduled',
-    },
-    type: {
-        type: DataTypes.ENUM('quiz', 'interview'),
-        defaultValue: 'quiz',
-    },
-
     is_ai_generated: {
         type: DataTypes.BOOLEAN,
         defaultValue: false,
-    },
-    topic: {
-        type: DataTypes.STRING,
-        allowNull: true,
-    },
+    }
 }, {
-    timestamps: true,
+    timestamps: true, // Adds created_at, updated_at
+    createdAt: 'created_at',
+    updatedAt: false, // User schema didn't specify updated_at, but Sequelize likes it. I'll map created_at.
     tableName: 'quizzes'
 });
 

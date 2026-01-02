@@ -100,6 +100,28 @@ export default function CreateQuiz() {
                         />
                     </div>
                     <div>
+                        <label className="label">Difficulty</label>
+                        <select
+                            className="input"
+                            value={formData.difficulty}
+                            onChange={e => setFormData({ ...formData, difficulty: e.target.value })}
+                        >
+                            <option value="easy">Easy</option>
+                            <option value="medium">Medium</option>
+                            <option value="hard">Hard</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="label">Topic</label>
+                        <input
+                            type="text"
+                            className="input"
+                            value={formData.topic}
+                            onChange={e => setFormData({ ...formData, topic: e.target.value })}
+                            placeholder="e.g. JavaScript"
+                        />
+                    </div>
+                    <div>
                         <label className="label">Access Code (Password)</label>
                         <input
                             type="text"

@@ -10,35 +10,34 @@ const Question = sequelize.define('Question', {
     text: {
         type: DataTypes.TEXT,
         allowNull: false,
+        field: 'question' // Map 'text' property to 'question' column if needed, or just rename property. User said `question` column.
+    },
+    question: {
+        type: DataTypes.TEXT,
+        allowNull: false
     },
     options: {
-        type: DataTypes.JSONB, // Array of strings e.g. ["Paris", "London", "Berlin"]
-        allowNull: false,
+        type: DataTypes.JSONB,
+        allowNull: true, // Allow null if using fixed columns? User asked for option_a/b/c/d.
     },
-    correct_index: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        validate: { min: 0 }
-    },
-    points: {
-        type: DataTypes.INTEGER,
-        defaultValue: 1,
-    },
+    // Supporting exact schema requests while keeping JSONB flexibility
+    option_a: { type: DataTypes.TEXT },
+    option_b: { type: DataTypes.TEXT },
+    option_c: { type: DataTypes.TEXT },
+    option_d: { type: DataTypes.TEXT },
+    correct_answer: { type: DataTypes.TEXT },
+
+    // Existing fields for app logic
+    correct_index: { type: DataTypes.INTEGER },
     type: {
         type: DataTypes.ENUM('mcq', 'interactive'),
         defaultValue: 'mcq'
     },
-    explanation: {
-        type: DataTypes.TEXT,
-        allowNull: true
-    },
-    semantic_answer: {
-        type: DataTypes.TEXT,
-        allowNull: true
-    }
+    explanation: { type: DataTypes.TEXT },
+    semantic_answer: { type: DataTypes.TEXT }
 }, {
-    timestamps: true,
-    tableName: 'questions'
+    timestamps: false,
+    tableName: 'quiz_questions'
 });
 
 module.exports = Question;

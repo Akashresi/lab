@@ -8,6 +8,8 @@ const {
     getQuiz,
     deleteQuiz,
     submitQuiz,
+    getQuizResults,
+    exportQuizResults
 } = require("../controllers/quizController");
 
 // Get & create quizzes
@@ -22,7 +24,11 @@ router
     .get(protect, getQuiz)
     .delete(protect, authorize("creator", "admin"), deleteQuiz);
 
-// ✅ FIXED: Submit quiz (PROTECTED)
+// Submit quiz
 router.post("/:id/submit", protect, submitQuiz);
+
+// Results & Export (Creator only)
+router.get("/:id/results", protect, authorize("creator", "admin"), getQuizResults);
+router.get("/:id/export", protect, authorize("creator", "admin"), exportQuizResults);
 
 module.exports = router;

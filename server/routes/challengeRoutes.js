@@ -7,7 +7,8 @@ const {
     getChallenge,
     deleteChallenge,
     submitChallenge,
-    runChallenge
+    runChallenge,
+    getChallengeResults
 } = require('../controllers/challengeController');
 
 router.route('/')
@@ -18,8 +19,11 @@ router.route('/:id')
     .get(protect, getChallenge)
     .delete(protect, authorize('creator', 'admin'), deleteChallenge);
 
-// ✅ FIXED: protect submit & run routes
+// Protect submit & run routes
 router.post('/:id/submit', protect, submitChallenge);
 router.post('/:id/run', protect, runChallenge);
+
+// Results (Creator only)
+router.get('/:id/results', protect, authorize('creator', 'admin'), getChallengeResults);
 
 module.exports = router;
