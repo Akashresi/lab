@@ -11,6 +11,8 @@ import Interviews from './pages/Interviews';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 
+import QuizAttempt from './pages/QuizAttempt';
+
 export default function App() {
   return (
     <Routes>
@@ -43,7 +45,7 @@ export default function App() {
       } />
 
       <Route path="/quizzes/create" element={
-        <ProtectedRoute>
+        <ProtectedRoute allowedRoles={['creator', 'admin']}>
           <Layout>
             <CreateQuiz />
           </Layout>
@@ -58,6 +60,14 @@ export default function App() {
         </ProtectedRoute>
       } />
 
+      <Route path="/quizzes/:id/attempt" element={
+        <ProtectedRoute allowedRoles={['participant', 'admin']}>
+          <Layout>
+            <QuizAttempt />
+          </Layout>
+        </ProtectedRoute>
+      } />
+
       {/* Challenge Routes */}
       <Route path="/challenges" element={
         <ProtectedRoute>
@@ -68,7 +78,7 @@ export default function App() {
       } />
 
       <Route path="/challenges/create" element={
-        <ProtectedRoute>
+        <ProtectedRoute allowedRoles={['creator', 'admin']}>
           <Layout>
             <CreateChallenge />
           </Layout>

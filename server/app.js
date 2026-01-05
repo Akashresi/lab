@@ -100,7 +100,9 @@ app.use((err, req, res, next) => {
 (async () => {
     try {
         await connectDB();
-        console.log("✅ Database connected successfully");
+        const { sequelize } = require("./config/db");
+        await sequelize.sync({ alter: true }); // Sync models to DB (create tables)
+        console.log("✅ Database connected & synced successfully");
     } catch (err) {
         console.error("❌ Database connection failed");
         console.error(err);

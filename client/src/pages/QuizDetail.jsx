@@ -19,9 +19,7 @@ export default function QuizDetail() {
             toast.error('Invalid access code');
             return;
         }
-        // Navigate to attempt page (Not implemented in this turn)
-        toast.success('Starting quiz... (Attempt view coming soon)');
-        // navigate(`/attempt/${id}`);
+        navigate(`/quizzes/${id}/attempt`);
     };
 
     if (!quiz) return <div className="p-8">Loading...</div>;

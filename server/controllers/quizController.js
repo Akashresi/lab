@@ -178,10 +178,33 @@ exports.submitQuiz = async (req, res) => {
 
             if (question.type === 'interactive') {
                 if (userAns && typeof userAns === 'string' && userAns.trim().length > 0) {
-                    // AI Grading Placeholder or Logic
-                    const target = (question.semantic_answer || '').toLowerCase();
-                    isCorrect = userAns.toLowerCase().includes(target);
-                    // Call AI here if needed, kept simplified for now to match strict schema move
+                    try {
+                        const prompt = `
+                        Evaluate this student answer for the question: "${question.text}"
+                        Semantic Answer Key: "${question.semantic_answer}"
+                        Student Answer: "${userAns}"
+
+                        Return strict JSON:
+                        {
+                          "isCorrect": boolean,
+                          "score": number,
+                          "feedback": "string explaining why"
+                        }
+                        `;
+
+                        const aiResponse = await callAI(prompt);
+                        if (aiResponse) {
+                            const parsed = JSON.parse(aiResponse.replace(/```json|```/g, "").trim());
+                            isCorrect = parsed.isCorrect;
+                        } else {
+                            // Fallback strict string match
+                            const target = (question.semantic_answer || '').toLowerCase();
+                            isCorrect = userAns.toLowerCase().includes(target);
+                        }
+                    } catch (e) {
+                        const target = (question.semantic_answer || '').toLowerCase();
+                        isCorrect = userAns.toLowerCase().includes(target);
+                    }
                 }
             } else {
                 // MCQ Grading
@@ -249,7 +272,56 @@ exports.getQuizResults = async (req, res) => {
     }
 };
 
+const ExcelJS = require('exceljs');
+
 exports.exportQuizResults = async (req, res) => {
-    // Placeholder for export logic using getQuizResults data
-    res.status(501).json({ message: "Not implemented yet" });
+    try {
+        const quiz = await Quiz.findByPk(req.params.id);
+        if (!quiz) return res.status(404).json({ error: 'Quiz not found' });
+
+        if (quiz.creator_id !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+
+        const results = await QuizSubmission.findAll({
+            where: { quiz_id: req.params.id },
+            include: [{ model: User, attributes: ['username', 'email'] }],
+            order: [['submitted_at', 'DESC']]
+        });
+
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Results');
+
+        worksheet.columns = [
+            { header: 'Student Name', key: 'username', width: 20 },
+            { header: 'Email', key: 'email', width: 30 },
+            { header: 'Score (%)', key: 'score', width: 15 },
+            { header: 'Submitted At', key: 'date', width: 25 },
+        ];
+
+        results.forEach(r => {
+            worksheet.addRow({
+                username: r.User ? r.User.username : 'Unknown',
+                email: r.User ? r.User.email : 'Unknown',
+                score: r.ai_score,
+                date: r.submitted_at.toLocaleString()
+            });
+        });
+
+        res.setHeader(
+            'Content-Type',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        );
+        res.setHeader(
+            'Content-Disposition',
+            'attachment; filename=' + `quiz_${req.params.id}_results.xlsx`
+        );
+
+        await workbook.xlsx.write(res);
+        res.end();
+
+    } catch (error) {
+        console.error("Export Error:", error);
+        res.status(500).json({ success: false, error: "Server Error" });
+    }
 };

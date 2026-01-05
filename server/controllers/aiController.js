@@ -13,27 +13,18 @@ exports.generateQuiz = async (req, res) => {
 
     try {
         const prompt = `
-Generate ${count} questions on "${topic}" (${difficulty}).
-Mix "mcq" (Multiple Choice) and "interactive" (Typed Answer) types.
-Return ONLY valid JSON array.
-Each object format:
-For MCQ:
-{
-  "type": "mcq",
-  "text": "question",
-  "options": ["A","B","C","D"],
-  "correct_index": 0,
-  "explanation": "why correct"
-}
-For Interactive:
-{
-  "type": "interactive",
-  "text": "question",
-  "options": [],
-  "correct_index": -1,
-  "semantic_answer": "correct answer concept",
-  "explanation": "explanation"
-}
+Generate ${count} multiple-choice questions on "${topic}".
+Difficulty: ${difficulty}
+
+Return strict JSON:
+[
+  {
+    "text": "The question text",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "correct_index": 0,
+    "explanation": "Brief explanation"
+  }
+]
 `;
 
         let result = await callAI(prompt);
@@ -50,13 +41,12 @@ For Interactive:
             }
         }
 
+
         if (!questions) {
             questions = Array.from({ length: count }).map((_, i) => ({
-                type: i % 2 === 0 ? 'mcq' : 'interactive',
                 text: `Mock Question ${i + 1} about ${topic}`,
-                options: i % 2 === 0 ? ["Option A", "Option B", "Option C", "Option D"] : [],
-                correct_index: i % 2 === 0 ? 0 : -1,
-                semantic_answer: i % 2 === 0 ? null : "Target Answer",
+                options: ["Option A", "Option B", "Option C", "Option D"],
+                correct_index: 0,
                 explanation: "Mock explanation"
             }));
         }

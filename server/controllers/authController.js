@@ -7,7 +7,7 @@ const { User } = require('../models');
 // @access  Public
 exports.register = async (req, res) => {
     try {
-        const { username, email, password, role } = req.body;
+        const { username, email, password } = req.body;
 
         // Check if user exists
         const userExists = await User.findOne({ where: { email } });
@@ -24,7 +24,7 @@ exports.register = async (req, res) => {
             username,
             email,
             password: hashedPassword,
-            role: role || 'participant'
+            role: 'participant' // Force default role
         });
 
         const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, {

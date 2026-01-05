@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { User } = require('../models');
 
 const protect = async (req, res, next) => {
     let token;
@@ -8,26 +9,35 @@ const protect = async (req, res, next) => {
             token = req.headers.authorization.split(' ')[1];
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-            // Allow storing simplified user info from token to avoid DB hit on every request if desired
-            // For now, we just pass the ID
-            req.user = { id: decoded.id, role: decoded.role };
+            // Fetch user from DB to ensure validity and current role
+            // Exclude password
+            const user = await User.findByPk(decoded.id, { attributes: { exclude: ['password'] } });
+
+            if (!user) {
+                return res.status(401).json({ success: false, error: 'Not authorized, user not found' });
+            }
+
+            req.user = {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                role: user.role
+            };
 
             next();
         } catch (error) {
             console.error(error);
             res.status(401).json({ success: false, error: 'Not authorized, token failed' });
         }
-    }
-
-    if (!token) {
+    } else {
         res.status(401).json({ success: false, error: 'Not authorized, no token' });
     }
 };
 
 const authorize = (...roles) => {
     return (req, res, next) => {
-        if (!roles.includes(req.user.role)) {
-            return res.status(403).json({ success: false, error: `User role ${req.user.role} is not authorized` });
+        if (!req.user || !roles.includes(req.user.role)) {
+            return res.status(403).json({ success: false, error: `User role ${req.user?.role} is not authorized` });
         }
         next();
     }
