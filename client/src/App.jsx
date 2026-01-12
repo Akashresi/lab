@@ -11,6 +11,7 @@ import Interviews from './pages/Interviews';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 
+import ChallengeAttempt from './pages/ChallengeAttempt';
 import QuizAttempt from './pages/QuizAttempt';
 
 export default function App() {
@@ -73,6 +74,14 @@ export default function App() {
         <ProtectedRoute>
           <Layout>
             <Challenges />
+          </Layout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/challenges/:id" element={
+        <ProtectedRoute>
+          <Layout>
+            <ChallengeAttempt />
           </Layout>
         </ProtectedRoute>
       } />

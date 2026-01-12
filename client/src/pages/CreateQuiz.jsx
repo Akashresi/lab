@@ -209,8 +209,8 @@ export default function CreateQuiz() {
                         <div className="flex gap-2">
                             <select
                                 className="input text-sm py-1.5"
-                                value={aiSettings.questionCount}
-                                onChange={e => setAiSettings({ ...aiSettings, questionCount: parseInt(e.target.value) })}
+                                value={aiParams.count}
+                                onChange={e => setAiParams({ ...aiParams, count: parseInt(e.target.value) })}
                             >
                                 <option value="3">3 Qs</option>
                                 <option value="5">5 Qs</option>

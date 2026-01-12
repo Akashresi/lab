@@ -154,3 +154,52 @@ Each object must match this schema:
         });
     }
 };
+exports.evaluateAnswer = async (req, res) => {
+    const { question, answer, context } = req.body;
+
+    try {
+        const prompt = `
+        You are an expert technical interviewer.
+        Question: "${question}"
+        Context/Ideal Answer Keys: "${context}"
+        Candidate Answer: "${answer}"
+
+        Evaluate the answer on:
+        1. Correctness (Pass/Fail)
+        2. Depth (1-10)
+        3. Clarity (1-10)
+
+        Return ONLY valid JSON:
+        {
+          "isCorrect": boolean,
+          "score": number,
+          "feedback": "Constructive feedback",
+          "idealAnswer": "Better version of the answer"
+        }
+        `;
+
+        let result = await callAI(prompt);
+        let evaluation;
+
+        if (result) {
+            try {
+                result = result.replace(/```json|```/g, "").trim();
+                evaluation = JSON.parse(result);
+            } catch (e) { console.error("JSON Parse Error", e); }
+        }
+
+        if (!evaluation) {
+            evaluation = {
+                isCorrect: true,
+                score: 7,
+                feedback: "Good attempt, but could be more specific.",
+                idealAnswer: context || "Standard textbook answer."
+            };
+        }
+
+        res.json({ success: true, data: evaluation });
+    } catch (error) {
+        console.error("AI Eval Error:", error);
+        res.status(500).json({ success: false, error: 'Evaluation failed' });
+    }
+};

@@ -15,6 +15,7 @@ const {
     generateQuiz,
     generateChallenge,
     generateInterview,
+    evaluateAnswer
 } = require("../controllers/aiController");
 
 /**
@@ -37,5 +38,8 @@ router.post("/generate-challenge", withAuth(generateChallenge));
 
 // Generate Interview Questions
 router.post("/generate-interview", withAuth(generateInterview));
+
+// Evaluate Interview Answer
+router.post("/evaluate", withAuth(evaluateAnswer));
 
 module.exports = router;
